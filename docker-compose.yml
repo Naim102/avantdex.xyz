@@ -1,0 +1,21 @@
+# Coolify: create a "Docker Compose" resource from this repo (branch main).
+# Set the variables below in Coolify -> Environment Variables (or keep the defaults), then attach
+# your domain to the `web` service on port 80. Coolify's proxy handles HTTPS, so no ports are published.
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VITE_ALLOCX_MARKETPLACE: ${VITE_ALLOCX_MARKETPLACE:-0x1af972dc5f777088ff10a9b3fc2ee076b23e80b1}
+        VITE_ALLOCX_DEPLOY_BLOCK: ${VITE_ALLOCX_DEPLOY_BLOCK:-69835919}
+        VITE_RPC_URL: ${VITE_RPC_URL:-https://rpc.testnet.arc.io}
+    restart: unless-stopped
+    expose:
+      - "80"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/healthz"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
