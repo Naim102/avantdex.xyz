@@ -1,12 +1,3 @@
-node_modules
-dist
-.git
-.claude
-.agents
-contracts/out
-contracts/cache
-contracts/legacy
-lib
-console.jsonl
-.env.local
-*.md
+*
+!nginx.conf
+!deploy/dist
