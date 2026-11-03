@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import logging
+import threading
+import time
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Request
@@ -11,6 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy import func, select
 
+from . import runtime
 from .config import get_settings
 from .db import SessionLocal
 from .models import AdminRole
@@ -55,13 +58,43 @@ def bootstrap_admins() -> None:
         db.commit()
 
 
+def _migrate_forever() -> None:
+    """Create/upgrade the database schema, retrying until the database is reachable.
+
+    Runs in a background thread so the API is already serving /api/health (which reports the current error)
+    instead of the whole container failing without a visible reason.
+    """
+    from pathlib import Path
+
+    from alembic import command
+    from alembic.config import Config
+
+    base = Path(__file__).resolve().parents[1]
+    cfg = Config(str(base / "alembic.ini"))
+    cfg.set_main_option("script_location", str(base / "alembic"))
+    attempt = 0
+    while True:
+        try:
+            command.upgrade(cfg, "head")
+            bootstrap_admins()
+            runtime.state.update(migrated=True, error="")
+            log.info("database ready, migrations applied")
+            return
+        except Exception as exc:
+            attempt += 1
+            first = (str(exc).strip().splitlines() or [type(exc).__name__])[0]
+            runtime.state["error"] = runtime.mask(f"{type(exc).__name__}: {first}")[:400]
+            log.error("database not ready (attempt %s): %s", attempt, runtime.state["error"])
+            time.sleep(min(5 * attempt, 30))
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     get_settings()  # fail fast on missing secrets in production
-    try:
-        bootstrap_admins()
-    except Exception:  # database not migrated yet; the first request after migration will still work
-        log.exception("could not bootstrap admins")
+    if get_settings().env == "test":
+        runtime.state.update(migrated=True, error="")  # tests migrate their own database
+    else:
+        threading.Thread(target=_migrate_forever, name="migrate", daemon=True).start()
     yield
 
 

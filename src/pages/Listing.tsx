@@ -16,12 +16,12 @@ export function ListingHub() {
       <PageTitle title="Create Listing" subtitle="Get a project onto Avantdex. Listing a project is free and never creates an order or a market by itself." />
       <div className="grid gap-4 sm:grid-cols-2">
         <Link to="/list/submit" className="glass flex flex-col gap-3 rounded-3xl p-6 transition-colors hover:border-[var(--border-strong)]">
-          <FileText className="size-7 text-[var(--accent)]" />
+          <FileText className="size-7 text-[var(--accent-text)]" />
           <div className="display text-xl font-semibold">Submit Your Project</div>
           <p className="text-sm text-[var(--subtle)]">For project owners and authorised team representatives. Provide project, token and ownership details. Applications go through review, verification and a separate market activation.</p>
         </Link>
         <Link to="/list/request" className="glass flex flex-col gap-3 rounded-3xl p-6 transition-colors hover:border-[var(--border-strong)]">
-          <Megaphone className="size-7 text-[var(--accent)]" />
+          <Megaphone className="size-7 text-[var(--accent-text)]" />
           <div className="display text-xl font-semibold">Request a Listing</div>
           <p className="text-sm text-[var(--subtle)]">Suggest a project you want to trade. A request never creates a live market: the Avantdex team reviews it first.</p>
         </Link>

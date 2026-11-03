@@ -50,7 +50,7 @@ export default function Legal() {
           </p>
         )}
       </div>
-      <nav className="flex flex-wrap gap-3 text-sm text-[var(--accent)]">
+      <nav className="flex flex-wrap gap-3 text-sm text-[var(--accent-text)]">
         {Object.entries(PAGES).map(([k, v]) => (
           <Link key={k} to={`/legal/${k}`} className="underline">
             {v.title}

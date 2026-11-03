@@ -293,3 +293,20 @@ def test_config_reports_fee_table_and_not_audited(client):
 def test_health_without_indexer(client):
     h = client.get("/api/health").json()
     assert h["status"] == "ok" and h["indexer"]["last_block"] is None
+
+
+def test_health_degrades_with_a_reason_instead_of_failing(client, monkeypatch):
+    from app import runtime
+
+    monkeypatch.setitem(runtime.state, "migrated", False)
+    monkeypatch.setitem(runtime.state, "error", "OperationalError: could not translate host name")
+    r = client.get("/api/health")
+    assert r.status_code == 200  # the container still counts as started so the reason is visible
+    h = r.json()
+    assert h["status"] == "degraded" and h["migrated"] is False and "host name" in h["error"]
+
+
+def test_connection_strings_are_masked():
+    from app.runtime import mask
+
+    assert mask("postgresql://user:secretpw@host:5432/db failed") == "postgresql://user:***@host:5432/db failed"

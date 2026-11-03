@@ -4,7 +4,18 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="generator" content="Arc Studio by Circle — https://studio.arc.io" />
-    <meta name="theme-color" content="#0d1b2f" />
+    <meta name="theme-color" content="#28DF99" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="apple-touch-icon" href="/logo.png" />
+    <script>
+      // set the theme before first paint (no flash): saved choice, else light
+      try {
+        var t = localStorage.getItem("avantdex.theme");
+        document.documentElement.setAttribute("data-theme", t === "dark" ? "dark" : "light");
+      } catch (e) {
+        document.documentElement.setAttribute("data-theme", "light");
+      }
+    </script>
     <meta name="description" content="Avantdex. Pre-market trading on Arc. Order-book trading of upcoming tokens settled in USDC with escrow." />
     <title>Avantdex | Pre-market trading on Arc</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />

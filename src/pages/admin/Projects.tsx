@@ -99,7 +99,7 @@ function ProjectDetail({ p, onClose, showBadges }: { p: AdminProject; onClose: (
           </ol>
         </div>
         {(NEXT[p.status] ?? []).length > 0 && (
-          <div className="space-y-2 rounded-2xl bg-white/5 p-3">
+          <div className="space-y-2 rounded-2xl bg-[var(--tint)] p-3">
             <div className="label">Move to</div>
             <input className="field" placeholder="Reason (required for reject / changes requested / delist)" value={reason} onChange={(e) => setReason(e.target.value)} />
             <div className="flex flex-wrap gap-2">
@@ -113,7 +113,7 @@ function ProjectDetail({ p, onClose, showBadges }: { p: AdminProject; onClose: (
           </div>
         )}
         {showBadges && (
-          <div className="space-y-2 rounded-2xl bg-white/5 p-3">
+          <div className="space-y-2 rounded-2xl bg-[var(--tint)] p-3">
             <div className="label">Verification badges</div>
             {p.badges.map((b) => (
               <div key={b.badge} className="flex items-center justify-between gap-2">

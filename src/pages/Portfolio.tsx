@@ -39,12 +39,12 @@ interface Summary {
   claimable: string
 }
 
-function Card({ label, value, sub }: { label: string; value: string; sub?: string }) {
+function Card({ label, value, sub, color }: { label: string; value: string; sub?: string; color?: string }) {
   return (
-    <div className="glass rounded-3xl p-5">
-      <div className="label">{label}</div>
-      <div className="display text-2xl font-bold tabular-nums">{value}</div>
-      {sub && <div className="mt-1 text-xs text-[var(--subtle)]">{sub}</div>}
+    <div className="glass rounded-3xl p-5" style={color ? { background: color, color: '#262627' } : undefined}>
+      <div className="label" style={color ? { color: '#262627' } : undefined}>{label}</div>
+      <div className="display text-3xl tabular-nums">{value}</div>
+      {sub && <div className="mt-1 text-xs font-semibold opacity-80">{sub}</div>}
     </div>
   )
 }
@@ -129,11 +129,11 @@ function TradeRow({ t, address, cfg, onDispute }: { t: ApiTrade; address: string
       </div>
       <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-[var(--subtle)]">
         <div className="flex flex-wrap gap-3">
-          <a href={txUrl(t.tx_hash)} target="_blank" rel="noopener noreferrer" className="mono inline-flex items-center gap-1 text-[var(--accent)] hover:underline">
+          <a href={txUrl(t.tx_hash)} target="_blank" rel="noopener noreferrer" className="mono inline-flex items-center gap-1 text-[var(--accent-text)] hover:underline">
             matched {shortAddr(t.tx_hash)} <ExternalLink className="size-3" />
           </a>
           {t.closed_tx_hash && (
-            <a href={txUrl(t.closed_tx_hash)} target="_blank" rel="noopener noreferrer" className="mono inline-flex items-center gap-1 text-[var(--accent)] hover:underline">
+            <a href={txUrl(t.closed_tx_hash)} target="_blank" rel="noopener noreferrer" className="mono inline-flex items-center gap-1 text-[var(--accent-text)] hover:underline">
               {t.status.toLowerCase()} {shortAddr(t.closed_tx_hash)} <ExternalLink className="size-3" />
             </a>
           )}
@@ -280,10 +280,10 @@ export default function Portfolio() {
             {tab === 'Overview' && (
               <div className="space-y-4">
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  <Card label="USDC balance" value={balance === undefined ? '…' : `${fmtUsdc(balance)}`} sub="In your wallet" />
-                  <Card label="Locked in open orders" value={fmtUsdc(summaryQ.data?.locked_in_orders ?? '0')} sub={`${summaryQ.data?.open_orders ?? 0} open order(s)`} />
+                  <Card label="USDC balance" value={balance === undefined ? '…' : `${fmtUsdc(balance)}`} sub="In your wallet" color="#28DF99" />
+                  <Card label="Locked in open orders" value={fmtUsdc(summaryQ.data?.locked_in_orders ?? '0')} sub={`${summaryQ.data?.open_orders ?? 0} open order(s)`} color="#FFD84D" />
                   <Card label="Locked in trades" value={fmtUsdc(summaryQ.data?.locked_in_trades ?? '0')} sub={`${summaryQ.data?.open_trades ?? 0} open trade(s) awaiting settlement`} />
-                  <Card label="Claimable" value={fmtUsdc(claimable)} sub="USDC that could not be sent automatically" />
+                  <Card label="Claimable" value={fmtUsdc(claimable)} sub="USDC that could not be sent automatically" color={claimable > 0n ? "#FF9C8F" : undefined} />
                 </div>
                 {claimable > 0n && (
                   <div className="glass space-y-3 rounded-3xl p-5">
@@ -306,7 +306,7 @@ export default function Portfolio() {
                   empty="No trades yet."
                   head={['Trade', 'Market', 'Role', 'Size', 'Price', 'Value', 'Status', 'Time']}
                   rows={trades.map((t) => [
-                    <a key="i" href={txUrl(t.tx_hash)} target="_blank" rel="noopener noreferrer" className="mono text-[var(--accent)] hover:underline">#{t.id}</a>,
+                    <a key="i" href={txUrl(t.tx_hash)} target="_blank" rel="noopener noreferrer" className="mono text-[var(--accent-text)] hover:underline">#{t.id}</a>,
                     t.market?.symbol ?? t.market_onchain_id,
                     t.role,
                     t.market ? fmtLotsAsTokens(t.lots, t.market ) : t.lots,

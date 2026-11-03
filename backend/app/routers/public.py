@@ -10,7 +10,8 @@ from sqlalchemy.orm import Session, joinedload
 
 from ..chain import live_fee_collector
 from ..config import get_settings
-from ..db import get_db
+from .. import runtime
+from ..db import SessionLocal, get_db
 from ..models import Claimable, IndexerState, Market, Order, Project, Setting, Trade, utcnow
 from ..security import ApiError, normalize_address
 from ..utils import CATEGORIES, active_badges, iso, project_public
@@ -44,15 +45,23 @@ def config(db: Session = Depends(get_db)) -> dict:
 
 
 @router.get("/health")
-def health(db: Session = Depends(get_db)) -> dict:
+def health() -> dict:
+    """Always answers (so the container counts as started) and says what is wrong when something is."""
+    st = None
+    db_state = "ok"
     try:
-        st = db.get(IndexerState, 1)
-    except Exception as exc:  # database unreachable or not migrated: say so instead of a bare 500
-        raise ApiError(503, "database_unavailable", f"Database check failed: {type(exc).__name__}") from exc
+        with SessionLocal() as db:
+            db.execute(select(1))
+            st = db.get(IndexerState, 1) if runtime.state["migrated"] else None
+    except Exception as exc:
+        db_state = runtime.mask(f"error: {type(exc).__name__}")
     lag = None if st is None else max(st.chain_head - st.last_block, 0)
+    ready = db_state == "ok" and bool(runtime.state["migrated"])
     return {
-        "status": "ok",
-        "database": "ok",
+        "status": "ok" if ready else "degraded",
+        "database": db_state,
+        "migrated": bool(runtime.state["migrated"]),
+        "error": runtime.state["error"],
         "indexer": {
             "last_block": st.last_block if st else None,
             "chain_head": st.chain_head if st else None,

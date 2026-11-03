@@ -17,18 +17,18 @@ export function Spinner({ label }: { label?: string }) {
 }
 
 type Tone = 'info' | 'ok' | 'warn' | 'error'
-const TONES: Record<Tone, { c: string; bg: string; border: string }> = {
-  info: { c: 'var(--ink-2)', bg: 'rgba(255,255,255,0.05)', border: 'var(--border)' },
-  ok: { c: 'var(--success)', bg: 'rgba(141,216,159,0.09)', border: 'rgba(141,216,159,0.3)' },
-  warn: { c: 'var(--warn)', bg: 'rgba(232,196,109,0.09)', border: 'rgba(232,196,109,0.3)' },
-  error: { c: 'var(--danger)', bg: 'rgba(232,109,122,0.09)', border: 'rgba(232,109,122,0.35)' },
+const TONES: Record<Tone, { c: string; bg: string }> = {
+  info: { c: 'var(--ink)', bg: 'var(--surface)' },
+  ok: { c: 'var(--ink)', bg: 'var(--success-bg)' },
+  warn: { c: 'var(--ink)', bg: 'var(--warn-bg)' },
+  error: { c: 'var(--ink)', bg: 'var(--danger-bg)' },
 }
 
 export function Notice({ tone = 'info', children }: { tone?: Tone; children: ReactNode }) {
   const t = TONES[tone]
   const Icon = tone === 'error' || tone === 'warn' ? TriangleAlert : tone === 'ok' ? Check : Info
   return (
-    <div role={tone === 'error' ? 'alert' : 'note'} className="flex gap-2.5 rounded-2xl border px-3.5 py-3 text-sm" style={{ color: t.c, background: t.bg, borderColor: t.border }}>
+    <div role={tone === 'error' ? 'alert' : 'note'} className="flex gap-2.5 rounded-2xl border-2 border-[var(--line)] px-3.5 py-3 text-sm font-medium" style={{ color: t.c, background: t.bg }}>
       <Icon className="mt-0.5 size-4 shrink-0" />
       <div className="min-w-0 text-pretty">{children}</div>
     </div>
@@ -36,15 +36,10 @@ export function Notice({ tone = 'info', children }: { tone?: Tone; children: Rea
 }
 
 export function Chip({ children, tone = 'neutral' }: { children: ReactNode; tone?: 'neutral' | 'ok' | 'warn' | 'bad' | 'accent' }) {
-  const map = {
-    neutral: { c: 'var(--subtle)', bg: 'rgba(255,255,255,0.06)' },
-    ok: { c: 'var(--success)', bg: 'rgba(141,216,159,0.12)' },
-    warn: { c: 'var(--warn)', bg: 'rgba(232,196,109,0.12)' },
-    bad: { c: 'var(--danger)', bg: 'rgba(232,109,122,0.12)' },
-    accent: { c: 'var(--accent)', bg: 'rgba(172,198,233,0.12)' },
-  }[tone]
+  const bg = { neutral: 'var(--surface)', ok: 'var(--success-bg)', warn: 'var(--warn-bg)', bad: 'var(--danger-bg)', accent: 'var(--accent)' }[tone]
+  const color = tone === 'accent' ? '#262627' : 'var(--ink)'
   return (
-    <span className="chip" style={{ color: map.c, background: map.bg, borderColor: 'transparent' }}>
+    <span className="chip" style={{ color, background: bg }}>
       {children}
     </span>
   )
@@ -61,21 +56,21 @@ export function StatusChip({ status }: { status: string }) {
   const label = status === 'SettlementOpen' ? 'Settlement open' : status
   return (
     <Chip tone={tone}>
-      <span className="size-1.5 rounded-full bg-current" />
+      <span className="size-2 rounded-full border border-[var(--line)] bg-current" style={{ color: tone === 'ok' ? 'var(--accent)' : tone === 'warn' ? '#FFC93C' : tone === 'bad' ? '#FF5A4F' : 'var(--subtle)' }} />
       {label}
     </Chip>
   )
 }
 
 export function Skeleton({ className = 'h-24' }: { className?: string }) {
-  return <div className={`glass animate-pulse rounded-3xl ${className}`} aria-hidden="true" />
+  return <div className={`glass animate-pulse rounded-3xl ${className}`} aria-hidden="true" style={{ background: 'var(--bg-2)' }} />
 }
 
 export function EmptyState({ title, body, action }: { title: string; body?: string; action?: ReactNode }) {
   return (
     <div className="glass rounded-3xl p-8 text-center">
-      <h3 className="display text-xl font-semibold">{title}</h3>
-      {body && <p className="mx-auto mt-2 max-w-md text-pretty text-sm text-[var(--subtle)]">{body}</p>}
+      <h3 className="display text-xl">{title}</h3>
+      {body && <p className="mx-auto mt-2 max-w-md text-pretty text-sm font-medium text-[var(--muted)]">{body}</p>}
       {action && <div className="mt-5 flex justify-center">{action}</div>}
     </div>
   )
@@ -85,8 +80,8 @@ export function PageTitle({ title, subtitle, right }: { title: string; subtitle?
   return (
     <div className="flex flex-wrap items-end justify-between gap-3">
       <div>
-        <h1 className="display text-3xl font-bold sm:text-4xl">{title}</h1>
-        {subtitle && <p className="mt-1 max-w-2xl text-pretty text-[var(--subtle)]">{subtitle}</p>}
+        <h1 className="display text-3xl uppercase sm:text-5xl">{title}</h1>
+        {subtitle && <p className="mt-2 max-w-2xl text-pretty font-medium text-[var(--muted)]">{subtitle}</p>}
       </div>
       {right}
     </div>
@@ -95,14 +90,14 @@ export function PageTitle({ title, subtitle, right }: { title: string; subtitle?
 
 export function Tabs<T extends string>({ tabs, value, onChange, label }: { tabs: readonly T[]; value: T; onChange: (t: T) => void; label: string }) {
   return (
-    <div className="no-scrollbar flex gap-1 overflow-x-auto rounded-2xl bg-white/5 p-1" role="tablist" aria-label={label}>
+    <div className="no-scrollbar flex gap-1.5 overflow-x-auto rounded-2xl border-2 border-[var(--line)] bg-[var(--surface)] p-1.5" role="tablist" aria-label={label}>
       {tabs.map((t) => (
         <button
           key={t}
           role="tab"
           aria-selected={value === t}
           onClick={() => onChange(t)}
-          className={`whitespace-nowrap rounded-xl px-3.5 py-2 text-sm font-medium transition-colors ${value === t ? 'bg-white/12 text-[var(--ink)]' : 'text-[var(--subtle)] hover:text-[var(--ink)]'}`}
+          className={`whitespace-nowrap rounded-lg px-3.5 py-2 text-sm font-bold transition-colors ${value === t ? 'bg-[var(--ink)] text-[var(--bg)]' : 'text-[var(--ink)] hover:bg-[var(--tint-2)]'}`}
         >
           {t}
         </button>
@@ -120,11 +115,11 @@ export function Modal({ open, onClose, title, children }: { open: boolean; onClo
   }, [open, onClose])
   if (!open) return null
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-4 sm:items-center" role="dialog" aria-modal="true" aria-label={title} onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="glass w-full max-w-lg rounded-3xl p-5" style={{ background: 'rgba(20,37,59,0.97)' }}>
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-[rgba(38,38,39,0.65)] p-4 sm:items-center" role="dialog" aria-modal="true" aria-label={title} onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="glass w-full max-w-lg rounded-3xl p-5">
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="display text-xl font-semibold">{title}</h2>
-          <button onClick={onClose} aria-label="Close" className="rounded-full p-1.5 hover:bg-white/10">
+          <h2 className="display text-xl">{title}</h2>
+          <button onClick={onClose} aria-label="Close" className="rounded-lg border-2 border-[var(--line)] p-1 hover:bg-[var(--tint-2)]">
             <X className="size-5" />
           </button>
         </div>
@@ -141,9 +136,9 @@ export function Field({ label, htmlFor, hint, error, children }: { label: string
         {label}
       </label>
       {children}
-      {hint && !error && <p className="mt-1.5 text-xs text-[var(--subtle)]">{hint}</p>}
+      {hint && !error && <p className="mt-1.5 text-xs font-medium text-[var(--muted)]">{hint}</p>}
       {error && (
-        <p className="mt-1.5 text-xs text-[var(--danger)]" role="alert">
+        <p className="mt-1.5 text-xs font-bold text-[var(--danger)]" role="alert">
           {error}
         </p>
       )}
@@ -160,7 +155,7 @@ export function TxPanel({ tx }: { tx: TxState }) {
           <span className="inline-flex items-center gap-1.5">
             <Check className="size-3.5 text-[var(--success)]" /> {s.label}
           </span>
-          <a href={txUrl(s.hash)} target="_blank" rel="noopener noreferrer" className="mono inline-flex items-center gap-1 text-xs text-[var(--accent)] hover:underline">
+          <a href={txUrl(s.hash)} target="_blank" rel="noopener noreferrer" className="mono inline-flex items-center gap-1 text-xs text-[var(--accent-text)] hover:underline">
             {shortAddr(s.hash)} <ExternalLink className="size-3" />
           </a>
         </div>
@@ -184,7 +179,7 @@ export function BadgeRow({ badges, compact = false }: { badges: Badge[]; compact
       {badges.map((b) => {
         const info = BADGE_INFO[b.badge]
         return (
-          <span key={b.badge} className="chip group relative cursor-help" style={{ color: 'var(--accent)' }} tabIndex={0} title={`${info?.means} ${info?.not}`}>
+          <span key={b.badge} className="chip group relative cursor-help" style={{ background: 'var(--accent)', color: '#262627' }} tabIndex={0} title={`${info?.means} ${info?.not}`}>
             <ShieldCheck className="size-3" />
             {compact ? info?.label.split(' ')[0] : info?.label}
           </span>
@@ -199,7 +194,7 @@ export function BadgeLegend() {
     <div className="space-y-3 text-sm">
       {Object.values(BADGE_INFO).map((i) => (
         <div key={i.label} className="glass-inner rounded-2xl p-3">
-          <div className="flex items-center gap-1.5 font-semibold text-[var(--accent)]">
+          <div className="flex items-center gap-1.5 font-bold text-[var(--accent-text)]">
             <ShieldCheck className="size-4" /> {i.label}
           </div>
           <p className="mt-1 text-[var(--ink-2)]">{i.means}</p>
@@ -266,7 +261,7 @@ export function DataTable({ head, rows, empty }: { head: string[]; rows: ReactNo
     <div className="overflow-x-auto">
       <table className="w-full min-w-[34rem] text-left text-sm">
         <thead>
-          <tr className="text-xs uppercase tracking-wide text-[var(--subtle)]">
+          <tr className="border-b-2 border-[var(--line)] text-xs uppercase tracking-wide text-[var(--muted)]">
             {head.map((h) => (
               <th key={h} className="px-3 py-2 font-semibold">
                 {h}
@@ -274,9 +269,9 @@ export function DataTable({ head, rows, empty }: { head: string[]; rows: ReactNo
             ))}
           </tr>
         </thead>
-        <tbody className="divide-y divide-white/8">
+        <tbody className="divide-y divide-[var(--hair)]">
           {rows.map((r, i) => (
-            <tr key={i} className="align-top">
+            <tr key={i} className="row-hover align-top">
               {r.map((c, j) => (
                 <td key={j} className="px-3 py-2.5">
                   {c}

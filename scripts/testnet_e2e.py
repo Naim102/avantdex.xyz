@@ -147,6 +147,13 @@ def main() -> None:
     book = client.get(f"/api/markets/{market_id}/orderbook").json()
     assert book["asks"][0]["lots"] == "2", book
 
+    if os.environ.get("E2E_LEAVE_LIVE") == "1":
+        # demo mode: add depth on both sides and leave the market live for manual testing
+        send("seller adds ask 3 @ 1.10", SELLER, ex.functions.placeOrder(market_id, 1, 1_100_000, 3, exp, False, 0, []))
+        send("buyer adds bid 2 @ 0.90", BUYER, ex.functions.placeOrder(market_id, 0, 900_000, 2, exp, False, 0, []))
+        print(f"LEFT LIVE: market {market_id} with orders on both sides and one open trade.")
+        return
+
     # ---- TGE: settlement
     send("openSettlement (1 hour window)", SELLER, ex.functions.openSettlement(market_id, DEMO, 3600))
     send("seller approves demo token", SELLER, demo.functions.approve(EXCHANGE, 2**255))

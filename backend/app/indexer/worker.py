@@ -144,8 +144,10 @@ class Indexer:
         while True:
             try:
                 self.catch_up()
-            except Exception:  # keep the worker alive; the next loop retries from last_block
-                log.exception("indexer iteration failed")
+            except Exception as exc:  # keep the worker alive; the next loop retries from last_block
+                log.error("indexer iteration failed (%s); retrying in 10s", type(exc).__name__)
+                time.sleep(10)
+                continue
             time.sleep(self.settings.indexer_poll_seconds)
 
     # ------------------------------------------------------------------ processing

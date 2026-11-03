@@ -74,7 +74,7 @@ function MarketActions({ m, cfg }: { m: AdminMarket; cfg: AppConfig }) {
   const status = m.status
 
   return (
-    <div className="space-y-3 rounded-2xl bg-white/5 p-3 text-sm">
+    <div className="space-y-3 rounded-2xl bg-[var(--tint)] p-3 text-sm">
       {hasRole === false && <Notice tone="warn">The connected wallet does not hold the on-chain MARKET_MANAGER_ROLE. Transactions below will fail. Switch to the manager wallet.</Notice>}
       {status === 'draft' && (
         <div className="space-y-2">
@@ -115,7 +115,7 @@ function MarketActions({ m, cfg }: { m: AdminMarket; cfg: AppConfig }) {
             )}
             <button className="btn btn-danger !min-h-9" disabled={tx.busy} onClick={() => window.confirm('Cancel this market? Every open trade becomes refundable with no fee.') && void chain('Cancel market', 'cancelMarket', [BigInt(id!)])}>Cancel market (TGE cancelled)</button>
           </div>
-          <div className="space-y-2 rounded-2xl border border-white/10 p-3">
+          <div className="space-y-2 rounded-2xl border border-[var(--hair)] p-3">
             <div className="label">Open settlement after TGE</div>
             <Notice tone="warn">Verify the token address off-chain first (project-confirmed address, explorer, contract badge). Opening settlement stops trading and starts the delivery deadline. Use two-person review for this step.</Notice>
             <div className="grid gap-2 sm:grid-cols-2">
@@ -165,7 +165,7 @@ function MarketCardAdmin({ m, cfg }: { m: AdminMarket; cfg: AppConfig }) {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {m.token_address && m.token_address !== ZERO && <a className="mono text-xs text-[var(--accent)] hover:underline" href={addrUrl(m.token_address)} target="_blank" rel="noopener noreferrer">{shortAddr(m.token_address)}</a>}
+          {m.token_address && m.token_address !== ZERO && <a className="mono text-xs text-[var(--accent-text)] hover:underline" href={addrUrl(m.token_address)} target="_blank" rel="noopener noreferrer">{shortAddr(m.token_address)}</a>}
           <StatusChip status={m.status} />
           <button className="btn btn-ghost !min-h-9" onClick={() => setOpen((o) => !o)}>{open ? 'Hide' : 'Manage'}</button>
         </div>

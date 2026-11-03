@@ -88,8 +88,8 @@ export function Disputes() {
           <div className="flex items-center justify-between"><span className="font-semibold">Ticket #{d.id} · trade #{d.trade_id}</span><StatusChip status={d.status} /></div>
           <p className="text-xs text-[var(--subtle)]">{shortAddr(d.opener)} · {fmtDate(d.created_at)}</p>
           <p className="whitespace-pre-wrap">{d.reason}</p>
-          {d.evidence.length > 0 && <p className="break-all text-xs text-[var(--accent)]">{d.evidence.join(' · ')}</p>}
-          {d.notes.map((n, i) => <p key={i} className="rounded-xl bg-white/5 p-2 text-xs"><b>{shortAddr(n.by)}</b>: {n.note}</p>)}
+          {d.evidence.length > 0 && <p className="break-all text-xs text-[var(--accent-text)]">{d.evidence.join(' · ')}</p>}
+          {d.notes.map((n, i) => <p key={i} className="rounded-xl bg-[var(--tint)] p-2 text-xs"><b>{shortAddr(n.by)}</b>: {n.note}</p>)}
           <input className="field" placeholder="Add a note" value={note[d.id] ?? ''} onChange={(e) => setNote({ ...note, [d.id]: e.target.value })} />
           <div className="flex flex-wrap gap-2">
             {['In Review', 'Resolved', 'Rejected'].map((s) => <button key={s} className="btn btn-ghost !min-h-9" onClick={() => void update(d.id, s)}>{s}</button>)}
@@ -221,7 +221,7 @@ export function SettingsPage() {
   const [notice, setNotice] = useState<string | null>(null)
   const [msg, setMsg] = useState('')
   if (!data) return <Spinner />
-  const row = (k: string, v: unknown) => <div key={k} className="flex flex-wrap justify-between gap-2 border-b border-white/8 py-2 text-sm"><span className="text-[var(--subtle)]">{k}</span><span className="mono break-all text-xs">{String(v)}</span></div>
+  const row = (k: string, v: unknown) => <div key={k} className="flex flex-wrap justify-between gap-2 border-b border-[var(--hair)] py-2 text-sm"><span className="text-[var(--subtle)]">{k}</span><span className="mono break-all text-xs">{String(v)}</span></div>
   const save = async () => {
     try {
       await api.put('/admin/settings', { notice: notice ?? '' })

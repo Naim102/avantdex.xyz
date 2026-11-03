@@ -82,7 +82,7 @@ export default function MarketDetail() {
             </div>
             <div className="mt-2 flex flex-wrap items-center gap-2">
               {p && <BadgeRow badges={p.badges} />}
-              <button className="text-xs text-[var(--accent)] underline" onClick={() => setLegend(true)}>
+              <button className="text-xs text-[var(--accent-text)] underline" onClick={() => setLegend(true)}>
                 What do badges mean?
               </button>
             </div>
@@ -100,14 +100,14 @@ export default function MarketDetail() {
       </header>
 
       <div className="grid gap-6 lg:grid-cols-[1fr_24rem]">
-        <div className="space-y-4">
+        <div className="min-w-0 space-y-4">
           <Tabs label="Market sections" tabs={TABS} value={tab} onChange={setTab} />
           {tab === 'Order Book' && (
             <OrderBook book={bookQ.data} market={m} myPrices={myPrices} onPick={(price) => setPick({ price, nonce: Date.now() })} />
           )}
           {tab === 'Recent Trades' && (
             <div className="glass overflow-hidden rounded-3xl">
-              <div className="grid grid-cols-4 gap-2 border-b border-white/8 px-3 py-2.5 text-xs font-semibold uppercase tracking-wide text-[var(--subtle)]">
+              <div className="grid grid-cols-4 gap-2 border-b border-[var(--hair)] px-3 py-2.5 text-xs font-semibold uppercase tracking-wide text-[var(--subtle)]">
                 <span>Price</span>
                 <span className="text-right">Size</span>
                 <span className="text-right">Time</span>
@@ -121,7 +121,7 @@ export default function MarketDetail() {
                     <span className="font-semibold">{fmtPricePerToken(t.price, m)}</span>
                     <span className="text-right">{fmtLotsAsTokens(t.lots, m)}</span>
                     <span className="text-right text-[var(--subtle)]">{timeAgo(t.created_at)}</span>
-                    <a href={txUrl(t.tx_hash)} target="_blank" rel="noopener noreferrer" className="mono inline-flex items-center justify-end gap-1 text-xs text-[var(--accent)] hover:underline">
+                    <a href={txUrl(t.tx_hash)} target="_blank" rel="noopener noreferrer" className="mono inline-flex items-center justify-end gap-1 text-xs text-[var(--accent-text)] hover:underline">
                       {shortAddr(t.tx_hash)} <ExternalLink className="size-3" />
                     </a>
                   </div>
@@ -163,7 +163,7 @@ export default function MarketDetail() {
               </div>
               <div className="text-xs text-[var(--subtle)]">
                 Token contract: {m.token_address && m.token_address !== '0x0000000000000000000000000000000000000000' ? (
-                  <a className="mono text-[var(--accent)] hover:underline" href={addrUrl(m.token_address)} target="_blank" rel="noopener noreferrer">
+                  <a className="mono text-[var(--accent-text)] hover:underline" href={addrUrl(m.token_address)} target="_blank" rel="noopener noreferrer">
                     {m.token_address}
                   </a>
                 ) : (
@@ -185,7 +185,7 @@ export default function MarketDetail() {
               </ul>
               <h3 className="display text-lg font-semibold">Fees (paid in USDC to {shortAddr(cfg.fee_collector)})</h3>
               <table className="w-full text-sm">
-                <tbody className="divide-y divide-white/8">
+                <tbody className="divide-y divide-[var(--hair)]">
                   {[['Buyer (successful trade)', '0.5%'], ['Seller (successful trade)', '0.5%'], ['Unfilled order cancellation', '0%'], ['Project listing', '0%'], ['Community listing request', '0%'], ['Failed transaction', '0% platform fee']].map(([a, b]) => (
                     <tr key={a}>
                       <td className="py-2">{a}</td>
@@ -201,7 +201,7 @@ export default function MarketDetail() {
                 <div><dt className="label">Order size</dt><dd>{m.min_lots} – {m.max_lots} lots</dd></div>
                 <div><dt className="label">Trading window</dt><dd>{fmtDate(m.trading_start)} → {fmtDate(m.trading_end)}</dd></div>
                 <div><dt className="label">Settlement deadline</dt><dd>{fmtDate(m.settlement_deadline)}</dd></div>
-                <div><dt className="label">Exchange contract</dt><dd><a className="mono text-[var(--accent)] hover:underline" href={addrUrl(cfg.exchange_address)} target="_blank" rel="noopener noreferrer">{shortAddr(cfg.exchange_address)}</a></dd></div>
+                <div><dt className="label">Exchange contract</dt><dd><a className="mono text-[var(--accent-text)] hover:underline" href={addrUrl(cfg.exchange_address)} target="_blank" rel="noopener noreferrer">{shortAddr(cfg.exchange_address)}</a></dd></div>
               </dl>
               <Notice tone="warn">Testnet software, not audited. A seller may default if the token price rises sharply; the buyer then receives payment plus collateral instead of tokens. Not investment advice.</Notice>
             </div>

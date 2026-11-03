@@ -75,7 +75,7 @@ export default function Explore() {
       <div className="flex flex-wrap items-center gap-2 text-sm">
         <span className="text-[var(--subtle)]">Badge:</span>
         {[['', 'Any'], ['verified_project', 'Verified Project'], ['contract_verified', 'Contract Verified'], ['allocation_verified', 'Allocation Verified']].map(([v, l]) => (
-          <button key={v} onClick={() => set('badge', v)} className={`chip ${badge === v ? '!border-[var(--accent)] !text-[var(--accent)]' : ''}`} aria-pressed={badge === v}>
+          <button key={v} onClick={() => set('badge', v)} className={`chip ${badge === v ? '!border-[var(--accent)] !text-[var(--accent-text)]' : ''}`} aria-pressed={badge === v}>
             {l}
           </button>
         ))}

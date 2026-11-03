@@ -25,7 +25,7 @@ export function MyOrdersTable({ orders, market, markets, empty }: { orders: ApiO
           const open = o.chain_status === 'Open'
           const expired = o.status === 'Expired' && open
           return [
-            <a key="t" href={txUrl(o.tx_hash)} target="_blank" rel="noopener noreferrer" className="mono text-[var(--accent)] hover:underline" title={shortAddr(o.tx_hash)}>
+            <a key="t" href={txUrl(o.tx_hash)} target="_blank" rel="noopener noreferrer" className="mono text-[var(--accent-text)] hover:underline" title={shortAddr(o.tx_hash)}>
               #{o.id}
             </a>,
             <span key="s" className={o.side === 'buy' ? 'text-[var(--success)]' : 'text-[var(--danger)]'}>

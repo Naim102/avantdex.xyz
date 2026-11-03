@@ -33,7 +33,7 @@ export default function AdminLayout() {
                   key={s.to}
                   to={s.to}
                   end={s.end}
-                  className={({ isActive }) => `whitespace-nowrap rounded-xl px-3 py-2 text-sm font-medium ${isActive ? 'bg-white/12 text-[var(--ink)]' : 'text-[var(--subtle)] hover:text-[var(--ink)]'}`}
+                  className={({ isActive }) => `whitespace-nowrap rounded-lg px-3 py-2 text-sm font-bold ${isActive ? 'bg-[var(--ink)] text-[var(--bg)]' : 'text-[var(--ink)] hover:bg-[var(--tint-2)]'}`}
                 >
                   {s.label}
                 </NavLink>

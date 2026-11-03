@@ -22,9 +22,36 @@ import { Toaster } from 'sonner'
 import { config } from './config'
 import App from './App'
 import { AuthProvider } from './hooks/useApp'
+import { ThemeProvider, useTheme } from './hooks/useTheme'
 import './index.css'
 
 const queryClient = new QueryClient()
+
+/** Wallet modal and toasts follow the app theme and the brand colors. */
+function ThemedShell() {
+  const { theme } = useTheme()
+  return (
+    <ConnectKitProvider
+      mode={theme}
+      theme="retro"
+      customTheme={{
+        '--ck-accent-color': '#262627',
+        '--ck-accent-text-color': '#28DF99',
+        '--ck-font-family': "'DM Sans', system-ui, sans-serif",
+      }}
+    >
+      <AuthProvider>
+        <App />
+      </AuthProvider>
+      <StudioWatermark />
+      <Toaster
+        position="top-center"
+        theme={theme}
+        toastOptions={{ style: { border: '2px solid #262627', borderRadius: '0.7rem', boxShadow: '4px 4px 0 #262627', fontWeight: 600 } }}
+      />
+    </ConnectKitProvider>
+  )
+}
 
 // Studio logo SVG
 const StudioLogo = () => (
@@ -48,18 +75,16 @@ const StudioWatermark = () => (
       gap: '6px',
       padding: '8px 14px',
       fontSize: '12px',
-      fontWeight: 600,
+      fontWeight: 700,
       fontFamily: 'system-ui, -apple-system, sans-serif',
-      color: '#1B3158',
+      color: '#262627',
       textDecoration: 'none',
       cursor: 'pointer',
-      background: 'rgba(172, 198, 233, 0.85)',
-      backdropFilter: 'blur(12px) saturate(180%)',
-      WebkitBackdropFilter: 'blur(12px) saturate(180%)',
-      borderRadius: '20px',
-      border: '1px solid rgba(255, 255, 255, 0.4)',
+      background: '#28DF99',
+      borderRadius: '10px',
+      border: '2px solid #262627',
       zIndex: 9999,
-      boxShadow: '0 4px 20px rgba(27, 49, 88, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.5)',
+      boxShadow: '3px 3px 0 #262627',
     }}
   >
     <StudioLogo />
@@ -71,13 +96,9 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <WagmiProvider config={config}>
       <QueryClientProvider client={queryClient}>
-        <ConnectKitProvider>
-          <AuthProvider>
-            <App />
-          </AuthProvider>
-          <StudioWatermark />
-          <Toaster position="top-center" />
-        </ConnectKitProvider>
+        <ThemeProvider>
+          <ThemedShell />
+        </ThemeProvider>
       </QueryClientProvider>
     </WagmiProvider>
   </StrictMode>,
