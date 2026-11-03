@@ -52,6 +52,7 @@ services:
       AUTH_DOMAIN: ${AUTH_DOMAIN:-localhost}
       AUTH_URI: ${AUTH_URI:-https://localhost}
       BOOTSTRAP_ADMIN_ADDRESSES: ${BOOTSTRAP_ADMIN_ADDRESSES:-}
+      ADMIN_ROLES: ${ADMIN_ROLES:-}
       REQUIRE_TWO_PERSON_APPROVAL: ${REQUIRE_TWO_PERSON_APPROVAL:-false}
     expose:
       - "8000"

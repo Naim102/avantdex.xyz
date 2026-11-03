@@ -35,6 +35,9 @@ class Settings(BaseSettings):
     auth_uri: str = "http://localhost"
     # Comma separated wallet addresses that receive the super_admin role on startup.
     bootstrap_admin_addresses: str = ""
+    # Extra admins with specific roles, set from the environment. Format (comma between wallets, | between roles):
+    #   ADMIN_ROLES=0xAAAA…:super_admin,0xBBBB…:project_reviewer|verification_admin
+    admin_roles: str = ""
     require_two_person_approval: bool = False
 
     cors_origins: str = ""
@@ -46,6 +49,20 @@ class Settings(BaseSettings):
     @property
     def bootstrap_admins(self) -> list[str]:
         return [a.strip().lower() for a in self.bootstrap_admin_addresses.split(",") if a.strip()]
+
+    @property
+    def env_admin_roles(self) -> dict[str, set[str]]:
+        """Admin wallets and roles defined in the environment (BOOTSTRAP_ADMIN_ADDRESSES + ADMIN_ROLES)."""
+        out: dict[str, set[str]] = {}
+        for a in self.bootstrap_admins:
+            out.setdefault(a, set()).add("super_admin")
+        for entry in self.admin_roles.split(","):
+            entry = entry.strip()
+            if not entry or ":" not in entry:
+                continue
+            addr, roles = entry.split(":", 1)
+            out.setdefault(addr.strip().lower(), set()).update(r.strip() for r in roles.split("|") if r.strip())
+        return out
 
     @property
     def cors_list(self) -> list[str]:

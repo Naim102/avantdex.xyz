@@ -10,3 +10,4 @@ console.jsonl
 .DS_Store
 .env
 .env.coolify
+.env.production

@@ -1,0 +1,68 @@
+# Avantdex on Coolify with an EXTERNAL / existing PostgreSQL (for example a Coolify "PostgreSQL" resource).
+# Same as docker-compose.yml but without the bundled database: API + indexer + web only.
+#
+# Coolify: Docker Compose resource -> Docker Compose Location: /docker-compose.external-db.yml
+# and enable "Connect To Predefined Network" so the containers can reach the database by its internal host name.
+# Required: DATABASE_URL (postgresql+psycopg://user:password@host:5432/dbname) and JWT_SECRET.
+# The database must already exist; tables are created/updated automatically (Alembic) when the API starts.
+name: avantdex
+
+x-backend-env: &backend-env
+  DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL to postgresql+psycopg://user:password@host:5432/dbname}
+  CHAIN_ID: ${CHAIN_ID:-5042002}
+  RPC_URL: ${RPC_URL:-https://rpc.testnet.arc.io}
+  EXPLORER_URL: ${EXPLORER_URL:-https://explorer.testnet.arc.io}
+  USDC_ADDRESS: ${USDC_ADDRESS:-0x3600000000000000000000000000000000000000}
+  EXCHANGE_ADDRESS: ${EXCHANGE_ADDRESS:-0x125ca669F4d42Dc09A0C435B721bD8089602e31d}
+  EXCHANGE_DEPLOY_BLOCK: ${EXCHANGE_DEPLOY_BLOCK:-70515453}
+  FEE_COLLECTOR: ${FEE_COLLECTOR:-0x136a2C17E0E6C077F48F489BeC6DBCE3202CEbd6}
+
+services:
+  api:
+    build: ./backend
+    restart: unless-stopped
+    environment:
+      <<: *backend-env
+      ENV: production
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET to a random value of at least 32 characters}
+      AUTH_DOMAIN: ${AUTH_DOMAIN:-localhost}
+      AUTH_URI: ${AUTH_URI:-https://localhost}
+      BOOTSTRAP_ADMIN_ADDRESSES: ${BOOTSTRAP_ADMIN_ADDRESSES:-}
+      ADMIN_ROLES: ${ADMIN_ROLES:-}
+      REQUIRE_TWO_PERSON_APPROVAL: ${REQUIRE_TWO_PERSON_APPROVAL:-false}
+    expose:
+      - "8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://localhost:8000/api/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+  indexer:
+    build: ./backend
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      <<: *backend-env
+      INDEXER_POLL_SECONDS: ${INDEXER_POLL_SECONDS:-2}
+    command: ["python", "-m", "app.indexer.run"]
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    expose:
+      - "80"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/healthz"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s

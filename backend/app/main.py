@@ -9,26 +9,49 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from .config import get_settings
 from .db import SessionLocal
 from .models import AdminRole
 from .routers import admin, auth, public, user
-from .security import ADDRESS_RE
+from .security import ADDRESS_RE, ROLES
 
 log = logging.getLogger("api")
 
 
 def bootstrap_admins() -> None:
-    """Grant super_admin to the wallets listed in BOOTSTRAP_ADMIN_ADDRESSES (idempotent)."""
-    addrs = [a for a in get_settings().bootstrap_admins if ADDRESS_RE.match(a)]
-    if not addrs:
-        return
+    """Make the database match the admins defined in the environment (idempotent, runs at every start).
+
+    BOOTSTRAP_ADMIN_ADDRESSES -> super_admin; ADMIN_ROLES -> specific roles per wallet.
+    Roles granted from the environment are tagged granted_by="env": removing a wallet/role from the environment
+    removes it at the next start. Roles granted from the dashboard are never touched. The last super_admin is
+    never removed, so a mistake in the environment cannot lock everyone out.
+    """
+    wanted = {a: roles for a, roles in get_settings().env_admin_roles.items() if ADDRESS_RE.match(a)}
+    valid = set(ROLES)
     with SessionLocal() as db:
-        for a in addrs:
-            if not db.scalar(select(AdminRole.id).where(AdminRole.address == a, AdminRole.role == "super_admin")):
-                db.add(AdminRole(address=a, role="super_admin", granted_by="bootstrap"))
+        for addr, roles in wanted.items():
+            for role in roles:
+                if role not in valid:
+                    log.warning("ignoring unknown admin role %r for %s", role, addr)
+                    continue
+                if not db.scalar(select(AdminRole.id).where(AdminRole.address == addr, AdminRole.role == role)):
+                    db.add(AdminRole(address=addr, role=role, granted_by="env"))
+        db.flush()
+        stale = [
+            r
+            for r in db.scalars(select(AdminRole).where(AdminRole.granted_by.in_(("env", "bootstrap"))))
+            if r.role not in wanted.get(r.address, set())
+        ]
+        total_super = db.scalar(select(func.count(AdminRole.id)).where(AdminRole.role == "super_admin")) or 0
+        stale_super = [r for r in stale if r.role == "super_admin"]
+        if stale_super and total_super - len(stale_super) <= 0:
+            keep = stale_super[0]  # never remove the last super_admin
+            log.warning("keeping super_admin %s although it is no longer in the environment", keep.address)
+            stale = [r for r in stale if r.id != keep.id]
+        for r in stale:
+            db.delete(r)
         db.commit()
 
 

@@ -132,3 +132,59 @@ def test_audit_logs_are_append_only(client, admin_headers):
             except Exception as e:
                 assert "append-only" in str(e)
                 db.rollback()
+
+
+def _roles(address):
+    from app.security import roles_of
+
+    with SessionLocal() as db:
+        return sorted(roles_of(db, address))
+
+
+def test_admins_and_roles_from_environment(monkeypatch, client):
+    from app.config import get_settings
+    from app.main import bootstrap_admins
+
+    boss, rev, ver = make_wallet(20), make_wallet(21), make_wallet(22)
+    monkeypatch.setenv("BOOTSTRAP_ADMIN_ADDRESSES", boss.address)
+    monkeypatch.setenv("ADMIN_ROLES", f"{rev.address}:project_reviewer|support_admin, {ver.address}:verification_admin,bad:entry, {ver.address}:nonsense")
+    get_settings.cache_clear()
+    bootstrap_admins()
+    assert _roles(boss.address) == ["super_admin"]
+    assert _roles(rev.address) == ["project_reviewer", "support_admin"]
+    assert _roles(ver.address) == ["verification_admin"]  # unknown role ignored
+
+
+def test_removing_from_environment_revokes_env_roles_only(monkeypatch, client):
+    from app.config import get_settings
+    from app.main import bootstrap_admins
+    from app.models import AdminRole
+
+    boss, rev, dash = make_wallet(23), make_wallet(24), make_wallet(25)
+    monkeypatch.setenv("BOOTSTRAP_ADMIN_ADDRESSES", boss.address)
+    monkeypatch.setenv("ADMIN_ROLES", f"{rev.address}:project_reviewer")
+    get_settings.cache_clear()
+    bootstrap_admins()
+    with SessionLocal() as db:  # a role granted from the dashboard
+        db.add(AdminRole(address=dash.address, role="support_admin", granted_by=boss.address))
+        db.commit()
+    monkeypatch.setenv("ADMIN_ROLES", "")
+    get_settings.cache_clear()
+    bootstrap_admins()
+    assert _roles(rev.address) == []  # removed from env -> revoked
+    assert _roles(dash.address) == ["support_admin"]  # dashboard grants are untouched
+    assert _roles(boss.address) == ["super_admin"]
+
+
+def test_last_super_admin_is_never_removed_by_environment_change(monkeypatch, client):
+    from app.config import get_settings
+    from app.main import bootstrap_admins
+
+    boss = make_wallet(26)
+    monkeypatch.setenv("BOOTSTRAP_ADMIN_ADDRESSES", boss.address)
+    get_settings.cache_clear()
+    bootstrap_admins()
+    monkeypatch.setenv("BOOTSTRAP_ADMIN_ADDRESSES", "")
+    get_settings.cache_clear()
+    bootstrap_admins()
+    assert _roles(boss.address) == ["super_admin"]  # safety net against locking everyone out
