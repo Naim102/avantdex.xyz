@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { DataTable, EmptyState, Field, Notice, Spinner, StatusChip } from '@/components/ui'
+import { DataTable, EmptyState, Field, Notice, Spinner, StatusChip, TxPanel } from '@/components/ui'
 import { api } from '@/lib/api'
-import { useAuth } from '@/hooks/useApp'
+import { useAuth, useConfig } from '@/hooks/useApp'
+import { useTx } from '@/hooks/useTx'
+import { exchangeAbi } from '@/lib/exchangeAbi'
 import { fmtDate, shortAddr } from '@/lib/format'
 import { fmtUsdc } from '@/lib/exchange'
 
@@ -184,6 +186,34 @@ interface SettingsData {
   note: string
 }
 
+function FeeCollectorForm({ current }: { current: string }) {
+  const { data: cfg } = useConfig()
+  const tx = useTx()
+  const [addr, setAddr] = useState('')
+  const valid = /^0x[0-9a-fA-F]{40}$/.test(addr) && addr.toLowerCase() !== '0x0000000000000000000000000000000000000000'
+  const change = async () => {
+    if (!cfg || !valid) return
+    if (!window.confirm(`Send ALL future platform fees to ${addr}? Double-check the address: a wrong address loses fees.`)) return
+    await tx.run('Change fee collector', { address: cfg.exchange_address, abi: exchangeAbi, functionName: 'setFeeCollector', args: [addr] })
+  }
+  return (
+    <div className="glass space-y-3 rounded-3xl p-4">
+      <h3 className="display text-lg font-semibold">Platform fee collector</h3>
+      <p className="text-sm text-[var(--subtle)]">
+        All platform fees (0.5% buyer + 0.5% seller on settled trades) are paid in USDC to <span className="mono break-all text-[var(--ink-2)]">{current}</span>. This is read live from the contract.
+      </p>
+      <Notice tone="warn">Changing it is an on-chain transaction that only the contract's DEFAULT_ADMIN wallet can send. It affects fees paid from now on and cannot touch escrowed funds. For a first deployment you can instead set FEE_COLLECTOR before running the deploy script.</Notice>
+      <Field label="New fee collector address" htmlFor="fc">
+        <input id="fc" className="field mono text-xs" placeholder="0x…" value={addr} onChange={(e) => setAddr(e.target.value.trim())} />
+      </Field>
+      <button className="btn btn-danger" disabled={!valid || tx.busy} onClick={() => void change()}>
+        {tx.busy ? <Spinner /> : 'Change fee collector on-chain'}
+      </button>
+      <TxPanel tx={tx} />
+    </div>
+  )
+}
+
 export function SettingsPage() {
   const qc = useQueryClient()
   const auth = useAuth()
@@ -214,6 +244,7 @@ export function SettingsPage() {
         {row('Two-person approval for activation', data.two_person_required ? 'required' : 'not enforced (testnet)')}
         <p className="pt-3 text-xs text-[var(--subtle)]">{data.note}</p>
       </div>
+      <FeeCollectorForm current={data.fee_collector} />
       <div className="glass space-y-3 rounded-3xl p-4">
         <Field label="Platform notice (shown as a banner)" htmlFor="nt" hint="Plain text, up to 500 characters. Super Admin only.">
           <input id="nt" className="field" maxLength={500} value={notice ?? data.notice} onChange={(e) => setNotice(e.target.value)} disabled={!auth.roles.includes('super_admin')} />

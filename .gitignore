@@ -9,3 +9,4 @@ console.jsonl
 *.tsbuildinfo
 .DS_Store
 .env
+.env.coolify

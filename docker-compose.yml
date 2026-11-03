@@ -5,19 +5,22 @@
 # handles HTTPS, so nothing is published on the host. The browser only ever talks to `web`; nginx forwards
 # /api/* to the API container, so no CORS is needed.
 #
-# Required before the first deploy: deploy the exchange contract to Arc Testnet (scripts/deploy-testnet.sh)
-# and set EXCHANGE_ADDRESS / EXCHANGE_DEPLOY_BLOCK. See docs/RUNBOOK.md.
+# Required secrets: POSTGRES_PASSWORD and JWT_SECRET. The contract address defaults to the Arc Testnet deployment;
+# see docs/RUNBOOK.md to deploy your own.
 name: avantdex
 
 x-backend-env: &backend-env
-  DATABASE_URL: postgresql+psycopg://avantdex:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@postgres:5432/avantdex
+  # Bundled PostgreSQL by default. To use an external/managed database set DATABASE_URL to a full SQLAlchemy URL
+  # (postgresql+psycopg://user:pass@host:5432/db) and ignore the postgres service.
+  DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://${POSTGRES_USER:-avantdex}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-avantdex}}
   # Arc Testnet. Testnet and mainnet settings must never be mixed.
   CHAIN_ID: ${CHAIN_ID:-5042002}
   RPC_URL: ${RPC_URL:-https://rpc.testnet.arc.io}
   EXPLORER_URL: ${EXPLORER_URL:-https://explorer.testnet.arc.io}
   USDC_ADDRESS: ${USDC_ADDRESS:-0x3600000000000000000000000000000000000000}
-  EXCHANGE_ADDRESS: ${EXCHANGE_ADDRESS:?set EXCHANGE_ADDRESS after deploying the contract}
-  EXCHANGE_DEPLOY_BLOCK: ${EXCHANGE_DEPLOY_BLOCK:?set EXCHANGE_DEPLOY_BLOCK}
+  # Defaults point at the Arc Testnet deployment (public values). Override both when you redeploy or move to mainnet.
+  EXCHANGE_ADDRESS: ${EXCHANGE_ADDRESS:-0x125ca669F4d42Dc09A0C435B721bD8089602e31d}
+  EXCHANGE_DEPLOY_BLOCK: ${EXCHANGE_DEPLOY_BLOCK:-70515453}
   FEE_COLLECTOR: ${FEE_COLLECTOR:-0x136a2C17E0E6C077F48F489BeC6DBCE3202CEbd6}
 
 services:
@@ -25,13 +28,13 @@ services:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_USER: avantdex
+      POSTGRES_USER: ${POSTGRES_USER:-avantdex}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
-      POSTGRES_DB: avantdex
+      POSTGRES_DB: ${POSTGRES_DB:-avantdex}
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U avantdex -d avantdex"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-avantdex} -d $${POSTGRES_DB:-avantdex}"]
       interval: 5s
       timeout: 3s
       retries: 20

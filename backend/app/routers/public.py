@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session, joinedload
 
+from ..chain import live_fee_collector
 from ..config import get_settings
 from ..db import get_db
 from ..models import Claimable, IndexerState, Market, Order, Project, Setting, Trade, utcnow
@@ -32,7 +33,7 @@ def config(db: Session = Depends(get_db)) -> dict:
         "usdc_address": s.usdc_address,
         "usdc_decimals": 6,
         "exchange_address": s.exchange_address,
-        "fee_collector": s.fee_collector,
+        "fee_collector": live_fee_collector(),
         "buyer_fee_bps": s.buyer_fee_bps,
         "seller_fee_bps": s.seller_fee_bps,
         "categories": CATEGORIES,

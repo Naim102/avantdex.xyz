@@ -14,7 +14,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, joinedload
 
-from ..chain import decode_market, get_exchange, get_web3, metadata_ref_for
+from ..chain import decode_market, get_exchange, get_web3, live_fee_collector, metadata_ref_for
 from ..config import get_settings
 from ..db import get_db
 from ..models import (
@@ -76,7 +76,7 @@ def overview(user: Session_ = Depends(require_any_admin), db: Session = Depends(
         "open_trades": open_trades,
         "settled_trades": len(settled),
         "fees_collected": str(fees),
-        "fee_collector": get_settings().fee_collector,
+        "fee_collector": live_fee_collector(),
         "open_listing_requests": db.scalar(select(func.count(ListingRequest.id)).where(ListingRequest.status.in_(("Open", "Under Review")))) or 0,
         "open_disputes": db.scalar(select(func.count(Dispute.id)).where(Dispute.status.in_(("Open", "In Review")))) or 0,
         "indexer_lag_blocks": None if st is None else max(st.chain_head - st.last_block, 0),
@@ -518,7 +518,7 @@ def get_admin_settings(user: Session_ = Depends(require_any_admin), db: Session 
         "chain_id": s.chain_id,
         "exchange_address": s.exchange_address,
         "usdc_address": s.usdc_address,
-        "fee_collector": s.fee_collector,
+        "fee_collector": live_fee_collector(),
         "buyer_fee_bps": s.buyer_fee_bps,
         "seller_fee_bps": s.seller_fee_bps,
         "two_person_required": s.require_two_person_approval,

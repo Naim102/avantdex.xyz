@@ -81,3 +81,28 @@ def decode_trade(t) -> dict:
 def metadata_ref_for(slug: str) -> str:
     """keccak256(slug) as 0x-hex: emitted on-chain at createMarket so the indexer can bind the DB record."""
     return "0x" + Web3.keccak(text=slug).hex().removeprefix("0x")
+
+
+_collector_cache: dict[str, tuple[float, str]] = {}
+
+
+def live_fee_collector() -> str:
+    """The platform fee address as the contract reports it (authoritative); falls back to FEE_COLLECTOR.
+
+    Cached for 60 seconds so API requests do not hit the RPC every time.
+    """
+    import time
+
+    s = get_settings()
+    key = s.exchange_address
+    hit = _collector_cache.get(key)
+    if hit and time.time() - hit[0] < 60:
+        return hit[1]
+    value = s.fee_collector
+    if key:
+        try:
+            value = get_exchange(get_web3()).functions.feeCollector().call()
+        except Exception:
+            value = s.fee_collector
+    _collector_cache[key] = (time.time(), value)
+    return value
