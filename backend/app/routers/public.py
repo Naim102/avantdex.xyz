@@ -45,7 +45,10 @@ def config(db: Session = Depends(get_db)) -> dict:
 
 @router.get("/health")
 def health(db: Session = Depends(get_db)) -> dict:
-    st = db.get(IndexerState, 1)
+    try:
+        st = db.get(IndexerState, 1)
+    except Exception as exc:  # database unreachable or not migrated: say so instead of a bare 500
+        raise ApiError(503, "database_unavailable", f"Database check failed: {type(exc).__name__}") from exc
     lag = None if st is None else max(st.chain_head - st.last_block, 0)
     return {
         "status": "ok",

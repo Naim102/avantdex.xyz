@@ -10,10 +10,12 @@ RUN pip install -r requirements.txt
 COPY alembic.ini .
 COPY alembic ./alembic
 COPY app ./app
+COPY entrypoint.sh .
+RUN chmod +x /app/entrypoint.sh
 
 RUN useradd --system --uid 10001 avantdex
 USER avantdex
 
 EXPOSE 8000
 # Default: the API. The indexer runs from the same image with `python -m app.indexer.run`.
-CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --proxy-headers --forwarded-allow-ips \"*\""]
+CMD ["/app/entrypoint.sh"]
