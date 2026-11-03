@@ -1,3 +1,0 @@
-services:
-  web:
-    ports: ["8088:80"]

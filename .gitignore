@@ -11,3 +11,4 @@ console.jsonl
 .env
 .env.coolify
 .env.production
+smoke.override.yml
