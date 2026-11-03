@@ -2,7 +2,7 @@
 
 from functools import lru_cache
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -45,6 +45,16 @@ class Settings(BaseSettings):
     # Indexer
     indexer_batch_blocks: int = 2000
     indexer_poll_seconds: float = 2.0
+
+    @field_validator("database_url")
+    @classmethod
+    def _normalize_database_url(cls, v: str) -> str:
+        """Accept the URL styles people copy from hosting panels (postgres://, postgresql://) for the psycopg driver."""
+        v = v.strip()
+        for prefix in ("postgres://", "postgresql://"):
+            if v.startswith(prefix):
+                return "postgresql+psycopg://" + v[len(prefix):]
+        return v
 
     @property
     def bootstrap_admins(self) -> list[str]:

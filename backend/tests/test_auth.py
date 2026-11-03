@@ -188,3 +188,11 @@ def test_last_super_admin_is_never_removed_by_environment_change(monkeypatch, cl
     get_settings.cache_clear()
     bootstrap_admins()
     assert _roles(boss.address) == ["super_admin"]  # safety net against locking everyone out
+
+
+def test_database_url_styles_are_normalized(monkeypatch):
+    from app.config import Settings
+
+    for raw in ("postgres://u:p@h:5432/d", "postgresql://u:p@h:5432/d", "postgresql+psycopg://u:p@h:5432/d"):
+        monkeypatch.setenv("DATABASE_URL", raw)
+        assert Settings().database_url == "postgresql+psycopg://u:p@h:5432/d"
