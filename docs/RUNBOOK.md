@@ -47,6 +47,26 @@ After changing frontend code: `bun run build:static`, commit `deploy/dist`, rede
 
 To practise settlement, use the `--demo-token` address as the project token: mint it to the seller wallet and approve it (the demo token has an open `mint`).
 
+## Testnet end-to-end check (real chain, real USDC)
+
+With the stack running against Arc Testnet (API on `http://localhost:8000`) and `.env` holding `DEPLOYER_PRIVATE_KEY`, `TRADER_PRIVATE_KEY`, `EXCHANGE_ADDRESS`, `DEMO_TOKEN_ADDRESS`:
+
+```bash
+docker run --rm --env-file .env -e API_URL=http://host.docker.internal:8000 -v "$PWD:/repo" -w /repo avantdex-backend-dev python scripts/testnet_e2e.py
+```
+
+It runs the whole lifecycle (project, market, trade, settlement, fees) and prints an explorer link for every transaction. It costs a few cents of testnet USDC.
+
+## Moving to Arc Mainnet (owner only, after an audit)
+
+Mainnet moves real money. Do not do it before an independent audit and legal review. When you are ready:
+
+1. Confirm every address and endpoint in the official docs (https://docs.arc.io/arc/references/connect-to-arc and `.../contract-addresses`): chain id `5042`, RPC `https://rpc.mainnet.arc.io`, explorer `https://explorer.arc.io`, USDC address.
+2. Deploy the exchange with **your own wallet** and a multisig as `ADMIN_ADDRESS` (the deploy script is testnet-only on purpose: copy `scripts/deploy-testnet-inner.sh`, change the expected chain id and RPC, and review it).
+3. Change these settings (Coolify env or `.env`): `CHAIN_ID=5042`, `RPC_URL`, `EXPLORER_URL`, `USDC_ADDRESS`, `EXCHANGE_ADDRESS`, `EXCHANGE_DEPLOY_BLOCK`, `FEE_COLLECTOR`. Use a **new database** (the indexer refuses a database that belongs to another chain/contract).
+4. In `src/config.ts` and `src/hooks/useApp.tsx` replace `arcTestnet` with Arc mainnet (`arc` in viem when available, or a custom chain with id 5042), then `bun run build:static` and commit `deploy/dist`.
+5. Keep testnet and mainnet configurations in separate environments and never reuse a testnet key on mainnet.
+
 ## Tests
 
 Contracts:

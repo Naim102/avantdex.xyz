@@ -19,6 +19,13 @@ Buyer 0.5% and seller 0.5% on **settled** trades only; 0% for order cancellation
 - Frontend: React 18, Vite, TypeScript, Tailwind, wagmi v2, viem, ConnectKit (`src/`). Runtime config comes from `/api/config` (no rebuild needed to change addresses).
 - Chain: Arc Testnet 5042002, RPC `https://rpc.testnet.arc.io`. USDC ERC-20 `0x3600000000000000000000000000000000000000`, 6 decimals. Mainnet (5042) is deliberately not configured.
 
+## Deployed (Arc Testnet, chain 5042002)
+
+- AvantdexExchange: `0x125ca669F4d42Dc09A0C435B721bD8089602e31d` (deploy block 70515453, tx in `deployments/arc-testnet.json`). Runtime bytecode (15,505 bytes) matches the local build; fee constants 50/50 bps, collector `0x136a…Ebd6`.
+- Owner / `DEFAULT_ADMIN` / `MARKET_MANAGER` / `PAUSER`: testnet deployer wallet `0xd6ac46673C844b4B46D5b66AC9223765bD6D65dC` (testnet-only key is in the git-ignored `.env`).
+- Demo ERC-20 for settlement practice: `0x9B4aDa076774DE9575797cae424e0192a1cB6E34` (open mint, worthless).
+- Mainnet is NOT deployed. For mainnet the owner deploys with their own wallet and changes `CHAIN_ID`, `RPC_URL`, `EXPLORER_URL`, `USDC_ADDRESS`, `EXCHANGE_ADDRESS`, `EXCHANGE_DEPLOY_BLOCK` and the wagmi chain in `src/config.ts` (and must get an audit first).
+
 ## Rules that must not break
 
 - No role can withdraw or redirect escrowed funds. Users always keep cancel / settle / default claim / refund paths. Pause blocks only new orders.

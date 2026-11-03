@@ -62,6 +62,10 @@ bun run check                                                                   
 
 Backend tests (PostgreSQL + a local chain), see [docs/RUNBOOK.md](docs/RUNBOOK.md#tests).
 
+## Deployed on Arc Testnet
+
+AvantdexExchange `0x125ca669F4d42Dc09A0C435B721bD8089602e31d` ([explorer](https://explorer.testnet.arc.io/address/0x125ca669F4d42Dc09A0C435B721bD8089602e31d)). A full lifecycle (project, market, trade, atomic settlement, fees to the collector, completion) was run against it with real Arc USDC; see `scripts/testnet_e2e.py`.
+
 ## Deploy
 
 1. Deploy the contract to Arc Testnet from **your** wallet: `./scripts/deploy-testnet.sh` ([runbook](docs/RUNBOOK.md)).
