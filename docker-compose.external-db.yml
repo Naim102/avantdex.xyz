@@ -2,10 +2,16 @@
 # Same as docker-compose.yml but without the bundled database: API + indexer + web only.
 #
 # Coolify: Docker Compose resource -> Docker Compose Location: /docker-compose.external-db.yml
-# and enable "Connect To Predefined Network" so the containers can reach the database by its internal host name.
+# The api and indexer join Coolify's shared network (`coolify`) so they can reach a Coolify database resource by its
+# internal host name; no UI toggle is needed. If your server uses a different network name, edit `networks.coolify.name`.
 # Required: DATABASE_URL (postgresql+psycopg://user:password@host:5432/dbname) and JWT_SECRET.
 # The database must already exist; tables are created/updated automatically (Alembic) when the API starts.
 name: avantdex
+
+networks:
+  coolify:
+    external: true
+    name: ${COOLIFY_NETWORK:-coolify}
 
 x-backend-env: &backend-env
   DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL to postgresql+psycopg://user:password@host:5432/dbname}
@@ -21,6 +27,7 @@ services:
   api:
     build: ./backend
     restart: unless-stopped
+    networks: [default, coolify]
     environment:
       <<: *backend-env
       ENV: production
@@ -42,6 +49,7 @@ services:
   indexer:
     build: ./backend
     restart: unless-stopped
+    networks: [default, coolify]
     depends_on:
       api:
         condition: service_healthy

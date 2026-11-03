@@ -33,7 +33,7 @@ Set these environment variables on the Coolify resource (see `.env.example`):
 
 Create a **Docker Compose** resource from this repo (branch `main`, file `docker-compose.yml`), add your domain to the `web` service (port 80). Coolify's proxy provides HTTPS. Nothing is built on the server except two small Python images; the frontend is the prebuilt `deploy/dist`.
 
-**Existing PostgreSQL (for example a Coolify database resource):** use `docker-compose.external-db.yml` as the compose file, enable *Connect To Predefined Network*, and set `DATABASE_URL=postgresql+psycopg://user:password@host:5432/dbname`. Tables are created automatically by Alembic when the API starts.
+**Existing PostgreSQL (for example a Coolify database resource):** use `docker-compose.external-db.yml` as the compose file (its api and indexer join Coolify's shared `coolify` network, so the database's internal host name resolves; set `COOLIFY_NETWORK` if your server names it differently), and set `DATABASE_URL=postgresql+psycopg://user:password@host:5432/dbname`. Tables are created automatically by Alembic when the API starts.
 
 **Admin accounts from the environment:** `BOOTSTRAP_ADMIN_ADDRESSES` (super admins) and `ADMIN_ROLES` (`wallet:role|role,wallet:role`). Roles: `super_admin`, `project_reviewer`, `verification_admin`, `market_manager`, `settlement_manager`, `support_admin`. Change the variable and redeploy; roles added from the environment are removed again if you delete them from it, roles granted inside the dashboard are never touched, and the last super admin is always kept. These are dashboard roles only; the on-chain roles (create/activate markets, pause, change fee collector) belong to the wallet that deployed the contract.
 
