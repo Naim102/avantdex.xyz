@@ -744,17 +744,21 @@ Arc Testnet RPC and USDC; wallet extensions; faucet for test USDC; PostgreSQL 16
 
 ## 41. Implementation status
 
-This section is updated with facts, not intentions.
+This section is updated with facts, not intentions. Last verified 2026-11-03.
 
-| Item | Status |
-|---|---|
-| R&D.md, PRD.md | Written (this document set) |
-| `AvantdexExchange` + Foundry tests | Implemented; see test results in the repository history/README |
-| Backend (FastAPI + PostgreSQL + indexer) | Implemented |
-| Frontend | Implemented |
-| Local end-to-end test | Run on a local chain; results in the final report |
-| Arc Testnet deployment | **Requires the owner's funded wallet**; deploy script and instructions provided. Until then, the deployed contract address placeholders in `.env.example` must be replaced. |
-| Audit, legal review, multisig, timelock | Not done |
+| Item | Status | Evidence |
+|---|---|---|
+| R&D.md, PRD.md | Written | this document set |
+| `AvantdexExchange` contract | Implemented, **unaudited** | `contracts/AvantdexExchange.sol` (about 15.5 KB runtime) |
+| Contract tests | **58 pass** (56 unit/fuzz incl. fee exactness, partial fills, blocklist fallbacks, default/refund/abandon paths; 2 stateful invariants: solvency and "collector only receives settled fees"). The 46 older AllocX v1 tests also pass (104 total) | `forge test` |
+| Backend (FastAPI + PostgreSQL + indexer) | Implemented | `backend/` |
+| Backend tests | **47 pass**: authentication, roles, projects and statuses, badges, listing requests, disputes, notifications, markets API, and 4 integration tests against a real local chain (full lifecycle, default + claimable credit, config mismatch, idempotent indexer, **replay from the deploy block reproduces identical orders/trades**) | `pytest` |
+| Frontend | Implemented: Home, Explore (6 tabs, search, filters, sorting), Market (order book, trades, About, Rules, trade panel with limit and market-style IOC orders), Portfolio (11 tabs + notifications, settle / claim default / refund / withdraw), Create Listing (Submit Your Project, Request a Listing), Admin (12 modules), legal placeholder pages | typecheck and lint pass |
+| Local end-to-end run (anvil + PostgreSQL + API + indexer + browser) | **Done**: project submitted, reviewed, verified, approved, market created on-chain, configuration verified, activated; market order and partial-fill limit order; settlement opened; seller settled one trade (fee collector received exactly 0.5% + 0.5%), buyer claimed a default on another (no fee), order cancelled, market completed; notifications and audit log checked | manual run with a browser wallet connected to a local chain |
+| Production-style stack (`docker-compose.yml`: PostgreSQL, API, indexer, nginx web) | Run locally against the local chain; a fresh database replayed the chain history to the same state | smoke test |
+| Arc Testnet deployment | **Not done by the assistant.** It needs the owner's funded wallet. `scripts/deploy-testnet.sh` is provided and was exercised against a local chain; it refuses any chain other than 5042002. | [docs/RUNBOOK.md](docs/RUNBOOK.md) |
+| Not verified | Behaviour of the real Arc USDC under the exchange (Foundry cannot fork Arc's USDC precompile; a blocklist mock is used instead), real wallet apps other than an injected-provider test wallet, gas cost per order on Arc | open |
+| Not done | Audit, legal review, multisig/timelock, email notifications, file uploads, CSV export | see §37 |
 
 ## 42. Open questions and decisions needing confirmation
 

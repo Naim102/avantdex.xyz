@@ -21,6 +21,7 @@ import { ConnectKitProvider } from 'connectkit'
 import { Toaster } from 'sonner'
 import { config } from './config'
 import App from './App'
+import { AuthProvider } from './hooks/useApp'
 import './index.css'
 
 const queryClient = new QueryClient()
@@ -71,7 +72,9 @@ createRoot(document.getElementById('root')!).render(
     <WagmiProvider config={config}>
       <QueryClientProvider client={queryClient}>
         <ConnectKitProvider>
-          <App />
+          <AuthProvider>
+            <App />
+          </AuthProvider>
           <StudioWatermark />
           <Toaster position="top-center" />
         </ConnectKitProvider>

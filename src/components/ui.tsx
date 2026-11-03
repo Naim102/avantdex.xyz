@@ -1,226 +1,291 @@
-import { useState, type ReactNode } from 'react'
-import { useReadContracts } from 'wagmi'
-import { Link } from 'react-router-dom'
-import { erc20Abi, formatUnits } from 'viem'
-import { Boxes, Check, ExternalLink, Info, KeyRound, Loader2, ShieldCheck, TriangleAlert } from 'lucide-react'
-import { buildTxExplorerUrl } from '@/onchain-facts'
-import { formatUsdc } from '@/onchain-money'
-import {
-  CHAIN_ID,
-  LISTING_STATUS,
-  ORDER_STATUS,
-  assetShort,
-  imageSrc,
-  isDirectType,
-  shortAddr,
-  type Listing,
-} from '@/lib/allocx'
+import { useEffect, useState, type ReactNode } from 'react'
+import { ExternalLink, Info, Loader2, ShieldCheck, TriangleAlert, Check, X } from 'lucide-react'
+import { BADGE_INFO, txUrl, shortAddr } from '@/lib/format'
+import type { Badge } from '@/lib/api'
 import type { TxState } from '@/hooks/useTx'
+import { useAuth } from '@/hooks/useApp'
+import { useAccount } from 'wagmi'
+import { ConnectKitButton } from 'connectkit'
 
-export function StatusBadge({ kind, status }: { kind: 'listing' | 'order'; status: number }) {
-  const label = kind === 'listing' ? LISTING_STATUS[status] : ORDER_STATUS[status]
-  const tone =
-    label === 'Active' || label === 'Completed' || label === 'Sold'
-      ? { c: 'var(--success)', bg: 'rgba(141,216,159,0.12)' }
-      : label === 'Pending' || label === 'Funded'
-        ? { c: 'var(--warn)', bg: 'rgba(232,196,109,0.12)' }
-        : { c: 'var(--subtle)', bg: 'rgba(255,255,255,0.06)' }
+export function Spinner({ label }: { label?: string }) {
   return (
-    <span className="chip" style={{ color: tone.c, background: tone.bg, borderColor: 'transparent' }}>
-      <span className="size-1.5 rounded-full" style={{ background: tone.c }} />
-      {kind === 'listing' && label === 'Pending' ? 'In escrow' : label}
+    <span className="inline-flex items-center gap-2" role="status">
+      <Loader2 className="size-4 animate-spin" />
+      {label && <span>{label}</span>}
     </span>
   )
 }
 
-export function Price({ value, size = 'md' }: { value: bigint; size?: 'md' | 'lg' }) {
-  const n = formatUsdc(value)
-  return (
-    <span className="inline-flex items-baseline gap-1">
-      <span className={`display font-bold tabular-nums ${size === 'lg' ? 'text-4xl' : 'text-xl'}`}>{n}</span>
-      <span className="text-xs font-semibold text-[var(--subtle)]">USDC</span>
-    </span>
-  )
+type Tone = 'info' | 'ok' | 'warn' | 'error'
+const TONES: Record<Tone, { c: string; bg: string; border: string }> = {
+  info: { c: 'var(--ink-2)', bg: 'rgba(255,255,255,0.05)', border: 'var(--border)' },
+  ok: { c: 'var(--success)', bg: 'rgba(141,216,159,0.09)', border: 'rgba(141,216,159,0.3)' },
+  warn: { c: 'var(--warn)', bg: 'rgba(232,196,109,0.09)', border: 'rgba(232,196,109,0.3)' },
+  error: { c: 'var(--danger)', bg: 'rgba(232,109,122,0.09)', border: 'rgba(232,109,122,0.35)' },
 }
 
-/** Generated mark for listings without an image. Deterministic from the asset address. */
-export function AssetThumb({ listing, className = '' }: { listing: Pick<Listing, 'assetContract' | 'assetType' | 'imageUri' | 'name'>; className?: string }) {
-  const [failed, setFailed] = useState(false)
-  const src = imageSrc(listing.imageUri)
-  if (src && !failed) {
-    return (
-      <div className={`overflow-hidden bg-[var(--surface-muted)] ${className}`}>
-        <img src={src} alt={listing.name} loading="lazy" onError={() => setFailed(true)} className="size-full object-cover" />
-      </div>
-    )
-  }
-  const seed = parseInt(listing.assetContract.slice(2, 8), 16)
-  const hue = 200 + (seed % 40)
-  const Icon = isDirectType(listing.assetType) ? KeyRound : Boxes
+export function Notice({ tone = 'info', children }: { tone?: Tone; children: ReactNode }) {
+  const t = TONES[tone]
+  const Icon = tone === 'error' || tone === 'warn' ? TriangleAlert : tone === 'ok' ? Check : Info
   return (
-    <div
-      className={`relative flex items-center justify-center overflow-hidden ${className}`}
-      style={{ background: `linear-gradient(135deg, hsl(${hue} 45% 22%), hsl(${hue + 20} 40% 12%))` }}
-    >
-      <div className="absolute -right-8 -top-8 size-32 rounded-full border border-white/10" />
-      <div className="absolute -bottom-10 -left-6 size-36 rounded-full border border-white/8" />
-      <Icon className="size-9 text-[var(--accent)] opacity-80" strokeWidth={1.5} />
-      <span className="mono absolute bottom-2 left-3 text-[10px] text-white/45">{shortAddr(listing.assetContract)}</span>
+    <div role={tone === 'error' ? 'alert' : 'note'} className="flex gap-2.5 rounded-2xl border px-3.5 py-3 text-sm" style={{ color: t.c, background: t.bg, borderColor: t.border }}>
+      <Icon className="mt-0.5 size-4 shrink-0" />
+      <div className="min-w-0 text-pretty">{children}</div>
     </div>
   )
 }
 
-/** Shows the amount for token listings using the token's own symbol and decimals. */
-export function AssetAmount({ listing }: { listing: Pick<Listing, 'assetType' | 'assetContract' | 'amount' | 'tokenId'> }) {
-  const isErc20 = listing.assetType === 0
-  const { data } = useReadContracts({
-    allowFailure: true,
-    contracts: [
-      { address: listing.assetContract, abi: erc20Abi, functionName: 'symbol', chainId: CHAIN_ID },
-      { address: listing.assetContract, abi: erc20Abi, functionName: 'decimals', chainId: CHAIN_ID },
-    ],
-    query: { enabled: isErc20, staleTime: 60_000 },
-  })
-  if (listing.assetType === 0) {
-    const symbol = data?.[0]?.status === 'success' ? String(data[0].result) : 'tokens'
-    const dec = data?.[1]?.status === 'success' ? Number(data[1].result) : 18
-    return <>{Number(formatUnits(listing.amount, dec)).toLocaleString('en-US', { maximumFractionDigits: 6 })} {symbol}</>
-  }
-  if (listing.assetType === 1) return <>Token #{listing.tokenId.toString()}</>
-  if (listing.assetType === 2) return <>{listing.amount.toString()} × ID {listing.tokenId.toString()}</>
-  return <>{listing.assetType === 3 ? 'Contract owner role' : 'DEFAULT_ADMIN_ROLE'}</>
-}
-
-export function AssetTypeChip({ type }: { type: number }) {
-  return <span className="chip">{assetShort(type)}</span>
-}
-
-export function ListingCard({ listing }: { listing: Listing }) {
-  return (
-    <Link
-      to={`/listing/${listing.id}`}
-      className="glass group flex flex-col overflow-hidden rounded-3xl transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--border-strong)]"
-    >
-      <div className="relative">
-        <AssetThumb listing={listing} className="aspect-[16/10] w-full" />
-        <div className="absolute left-3 top-3 flex gap-1.5">
-          <AssetTypeChip type={listing.assetType} />
-        </div>
-        <div className="absolute right-3 top-3">
-          <StatusBadge kind="listing" status={listing.status} />
-        </div>
-      </div>
-      <div className="flex flex-1 flex-col p-4">
-        <h3 className="display truncate text-lg font-semibold text-balance">{listing.name}</h3>
-        <p className="mt-1 line-clamp-2 min-h-[2.5rem] text-sm text-pretty text-[var(--subtle)]">
-          {listing.description || 'No description provided.'}
-        </p>
-        <div className="mt-3 text-xs text-[var(--muted)]">
-          <AssetAmount listing={listing} />
-        </div>
-        <div className="mt-4 flex items-end justify-between border-t border-white/8 pt-3">
-          <Price value={listing.price} />
-          <span className="mono text-xs text-[var(--subtle)]">by {shortAddr(listing.seller)}</span>
-        </div>
-      </div>
-    </Link>
-  )
-}
-
-export function ListingGrid({ children }: { children: ReactNode }) {
-  return <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{children}</div>
-}
-
-export function SkeletonGrid({ count = 6 }: { count?: number }) {
-  return (
-    <ListingGrid>
-      {Array.from({ length: count }, (_, i) => (
-        <div key={i} className="glass h-72 animate-pulse rounded-3xl" />
-      ))}
-    </ListingGrid>
-  )
-}
-
-export function EmptyState({ title, body, action }: { title: string; body: string; action?: ReactNode }) {
-  return (
-    <div className="glass flex flex-col items-center rounded-3xl px-6 py-14 text-center">
-      <div className="mb-4 flex size-12 items-center justify-center rounded-2xl bg-white/6">
-        <Boxes className="size-6 text-[var(--accent)]" strokeWidth={1.5} />
-      </div>
-      <h3 className="display text-xl font-semibold">{title}</h3>
-      <p className="mt-1.5 max-w-sm text-sm text-pretty text-[var(--subtle)]">{body}</p>
-      {action && <div className="mt-5">{action}</div>}
-    </div>
-  )
-}
-
-export function Notice({ tone = 'info', children }: { tone?: 'info' | 'warn' | 'error' | 'ok'; children: ReactNode }) {
+export function Chip({ children, tone = 'neutral' }: { children: ReactNode; tone?: 'neutral' | 'ok' | 'warn' | 'bad' | 'accent' }) {
   const map = {
-    info: { c: 'var(--accent)', bg: 'rgba(172,198,233,0.08)', Icon: Info },
-    warn: { c: 'var(--warn)', bg: 'rgba(232,196,109,0.08)', Icon: TriangleAlert },
-    error: { c: 'var(--danger)', bg: 'rgba(232,109,122,0.08)', Icon: TriangleAlert },
-    ok: { c: 'var(--success)', bg: 'rgba(141,216,159,0.08)', Icon: ShieldCheck },
+    neutral: { c: 'var(--subtle)', bg: 'rgba(255,255,255,0.06)' },
+    ok: { c: 'var(--success)', bg: 'rgba(141,216,159,0.12)' },
+    warn: { c: 'var(--warn)', bg: 'rgba(232,196,109,0.12)' },
+    bad: { c: 'var(--danger)', bg: 'rgba(232,109,122,0.12)' },
+    accent: { c: 'var(--accent)', bg: 'rgba(172,198,233,0.12)' },
   }[tone]
   return (
-    <div className="flex gap-2.5 rounded-2xl border p-3.5 text-sm text-pretty" style={{ background: map.bg, borderColor: `color-mix(in srgb, ${map.c} 30%, transparent)` }}>
-      <map.Icon className="mt-0.5 size-4 shrink-0" style={{ color: map.c }} />
-      <div className="text-[var(--ink-2)]">{children}</div>
-    </div>
-  )
-}
-
-export function LegalNote() {
-  return (
-    <Notice>
-      AllocX transfers <strong>onchain</strong> tokens and contract admin rights only. Onchain ownership is not legal ownership of a company, brand, or
-      intellectual property.
-    </Notice>
-  )
-}
-
-export function Spinner({ label }: { label: string }) {
-  return (
-    <span className="inline-flex items-center gap-2">
-      <Loader2 className="size-4 animate-spin" /> {label}
+    <span className="chip" style={{ color: map.c, background: map.bg, borderColor: 'transparent' }}>
+      {children}
     </span>
   )
 }
 
-/** Real transaction state only: wallet prompt, confirming, confirmed (with hash), or error. */
-export function TxPanel({ tx }: { tx: Pick<TxState, 'phase' | 'label' | 'hash' | 'error' | 'steps'> }) {
-  if (tx.phase === 'idle' && tx.steps.length === 0) return null
+export function StatusChip({ status }: { status: string }) {
+  const tone = ['Live', 'Settled', 'Completed', 'Filled', 'Approved'].includes(status)
+    ? 'ok'
+    : ['Open', 'Partially Filled', 'Settlement open', 'SettlementOpen', 'Submitted', 'Under Review', 'Verification', 'Market Setup', 'Setup', 'In Review'].includes(status)
+      ? 'warn'
+      : ['Defaulted', 'Rejected', 'Cancelled', 'Delisted', 'Suspended'].includes(status)
+        ? 'bad'
+        : 'neutral'
+  const label = status === 'SettlementOpen' ? 'Settlement open' : status
   return (
-    <div className="glass-inner space-y-2 rounded-2xl p-3.5 text-sm" role="status" aria-live="polite">
+    <Chip tone={tone}>
+      <span className="size-1.5 rounded-full bg-current" />
+      {label}
+    </Chip>
+  )
+}
+
+export function Skeleton({ className = 'h-24' }: { className?: string }) {
+  return <div className={`glass animate-pulse rounded-3xl ${className}`} aria-hidden="true" />
+}
+
+export function EmptyState({ title, body, action }: { title: string; body?: string; action?: ReactNode }) {
+  return (
+    <div className="glass rounded-3xl p-8 text-center">
+      <h3 className="display text-xl font-semibold">{title}</h3>
+      {body && <p className="mx-auto mt-2 max-w-md text-pretty text-sm text-[var(--subtle)]">{body}</p>}
+      {action && <div className="mt-5 flex justify-center">{action}</div>}
+    </div>
+  )
+}
+
+export function PageTitle({ title, subtitle, right }: { title: string; subtitle?: string; right?: ReactNode }) {
+  return (
+    <div className="flex flex-wrap items-end justify-between gap-3">
+      <div>
+        <h1 className="display text-3xl font-bold sm:text-4xl">{title}</h1>
+        {subtitle && <p className="mt-1 max-w-2xl text-pretty text-[var(--subtle)]">{subtitle}</p>}
+      </div>
+      {right}
+    </div>
+  )
+}
+
+export function Tabs<T extends string>({ tabs, value, onChange, label }: { tabs: readonly T[]; value: T; onChange: (t: T) => void; label: string }) {
+  return (
+    <div className="no-scrollbar flex gap-1 overflow-x-auto rounded-2xl bg-white/5 p-1" role="tablist" aria-label={label}>
+      {tabs.map((t) => (
+        <button
+          key={t}
+          role="tab"
+          aria-selected={value === t}
+          onClick={() => onChange(t)}
+          className={`whitespace-nowrap rounded-xl px-3.5 py-2 text-sm font-medium transition-colors ${value === t ? 'bg-white/12 text-[var(--ink)]' : 'text-[var(--subtle)] hover:text-[var(--ink)]'}`}
+        >
+          {t}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+export function Modal({ open, onClose, title, children }: { open: boolean; onClose: () => void; title: string; children: ReactNode }) {
+  useEffect(() => {
+    if (!open) return
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [open, onClose])
+  if (!open) return null
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-4 sm:items-center" role="dialog" aria-modal="true" aria-label={title} onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="glass w-full max-w-lg rounded-3xl p-5" style={{ background: 'rgba(20,37,59,0.97)' }}>
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="display text-xl font-semibold">{title}</h2>
+          <button onClick={onClose} aria-label="Close" className="rounded-full p-1.5 hover:bg-white/10">
+            <X className="size-5" />
+          </button>
+        </div>
+        {children}
+      </div>
+    </div>
+  )
+}
+
+export function Field({ label, htmlFor, hint, error, children }: { label: string; htmlFor?: string; hint?: string; error?: string; children: ReactNode }) {
+  return (
+    <div>
+      <label className="label" htmlFor={htmlFor}>
+        {label}
+      </label>
+      {children}
+      {hint && !error && <p className="mt-1.5 text-xs text-[var(--subtle)]">{hint}</p>}
+      {error && (
+        <p className="mt-1.5 text-xs text-[var(--danger)]" role="alert">
+          {error}
+        </p>
+      )}
+    </div>
+  )
+}
+
+export function TxPanel({ tx }: { tx: TxState }) {
+  if (tx.phase === 'idle' && !tx.error && tx.steps.length === 0) return null
+  return (
+    <div className="space-y-2 text-sm" aria-live="polite">
       {tx.steps.map((s) => (
-        <div key={s.hash} className="flex items-center justify-between gap-3">
-          <span className="flex items-center gap-2 text-[var(--success)]">
-            <Check className="size-4" /> {s.label}
+        <div key={s.hash} className="flex items-center justify-between gap-2 text-[var(--subtle)]">
+          <span className="inline-flex items-center gap-1.5">
+            <Check className="size-3.5 text-[var(--success)]" /> {s.label}
           </span>
-          <a href={buildTxExplorerUrl(CHAIN_ID, s.hash)} target="_blank" rel="noopener noreferrer" className="mono inline-flex items-center gap-1 text-xs text-[var(--accent)] hover:underline">
+          <a href={txUrl(s.hash)} target="_blank" rel="noopener noreferrer" className="mono inline-flex items-center gap-1 text-xs text-[var(--accent)] hover:underline">
             {shortAddr(s.hash)} <ExternalLink className="size-3" />
           </a>
         </div>
       ))}
-      {tx.phase === 'wallet' && (
-        <div className="flex items-center gap-2 text-[var(--ink-2)]">
-          <Loader2 className="size-4 animate-spin" /> {tx.label}: confirm in your wallet…
-        </div>
+      {tx.phase === 'wallet' && <Notice>Confirm “{tx.label}” in your wallet…</Notice>}
+      {tx.phase === 'confirming' && (
+        <Notice>
+          <Spinner label={`Waiting for “${tx.label}” to be confirmed…`} />
+        </Notice>
       )}
-      {tx.phase === 'confirming' && tx.hash && (
-        <div className="flex items-center justify-between gap-3 text-[var(--ink-2)]">
-          <span className="flex items-center gap-2">
-            <Loader2 className="size-4 animate-spin" /> {tx.label}: waiting for confirmation…
+      {tx.phase === 'error' && <Notice tone="error">{tx.error}</Notice>}
+    </div>
+  )
+}
+
+/** Verification badges with an explanation of what each one does and does not guarantee. */
+export function BadgeRow({ badges, compact = false }: { badges: Badge[]; compact?: boolean }) {
+  if (!badges.length) return null
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {badges.map((b) => {
+        const info = BADGE_INFO[b.badge]
+        return (
+          <span key={b.badge} className="chip group relative cursor-help" style={{ color: 'var(--accent)' }} tabIndex={0} title={`${info?.means} ${info?.not}`}>
+            <ShieldCheck className="size-3" />
+            {compact ? info?.label.split(' ')[0] : info?.label}
           </span>
-          <a href={buildTxExplorerUrl(CHAIN_ID, tx.hash)} target="_blank" rel="noopener noreferrer" className="mono inline-flex items-center gap-1 text-xs text-[var(--accent)] hover:underline">
-            {shortAddr(tx.hash)} <ExternalLink className="size-3" />
-          </a>
+        )
+      })}
+    </div>
+  )
+}
+
+export function BadgeLegend() {
+  return (
+    <div className="space-y-3 text-sm">
+      {Object.values(BADGE_INFO).map((i) => (
+        <div key={i.label} className="glass-inner rounded-2xl p-3">
+          <div className="flex items-center gap-1.5 font-semibold text-[var(--accent)]">
+            <ShieldCheck className="size-4" /> {i.label}
+          </div>
+          <p className="mt-1 text-[var(--ink-2)]">{i.means}</p>
+          <p className="mt-1 text-[var(--subtle)]">{i.not}</p>
         </div>
-      )}
-      {tx.phase === 'error' && tx.error && (
-        <div className="flex items-start gap-2 text-[var(--danger)]">
-          <TriangleAlert className="mt-0.5 size-4 shrink-0" /> {tx.error}
-        </div>
-      )}
+      ))}
+      <Notice tone="warn">A verification badge never implies investment safety, profitability or guaranteed token delivery.</Notice>
+    </div>
+  )
+}
+
+/** Wraps content that needs a connected wallet and, optionally, a signed-in session. */
+export function WalletGate({ children, needSignIn = false, what = 'continue' }: { children: ReactNode; needSignIn?: boolean; what?: string }) {
+  const { isConnected } = useAccount()
+  const auth = useAuth()
+  if (!isConnected) {
+    return (
+      <EmptyState
+        title="Connect your wallet"
+        body={`Connect a wallet on Arc Testnet to ${what}.`}
+        action={
+          <ConnectKitButton.Custom>
+            {({ show }) => (
+              <button className="btn btn-primary" onClick={show}>
+                Connect Wallet
+              </button>
+            )}
+          </ConnectKitButton.Custom>
+        }
+      />
+    )
+  }
+  if (needSignIn && !auth.signedIn) {
+    return (
+      <EmptyState
+        title="Sign in with your wallet"
+        body="Sign a message to prove you control this wallet. Signing does not authorize any transaction or token approval."
+        action={
+          <div className="space-y-3">
+            <button className="btn btn-primary" disabled={auth.signing} onClick={() => void auth.signIn()}>
+              {auth.signing ? <Spinner label="Check your wallet…" /> : 'Sign in'}
+            </button>
+            {auth.error && <Notice tone="error">{auth.error}</Notice>}
+          </div>
+        }
+      />
+    )
+  }
+  return <>{children}</>
+}
+
+export function useTicker(ms = 1000): number {
+  const [n, setN] = useState(() => Date.now())
+  useEffect(() => {
+    const id = setInterval(() => setN(Date.now()), ms)
+    return () => clearInterval(id)
+  }, [ms])
+  return n
+}
+
+export function DataTable({ head, rows, empty }: { head: string[]; rows: ReactNode[][]; empty?: string }) {
+  if (!rows.length) return <p className="py-6 text-center text-sm text-[var(--subtle)]">{empty ?? 'Nothing here yet.'}</p>
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full min-w-[34rem] text-left text-sm">
+        <thead>
+          <tr className="text-xs uppercase tracking-wide text-[var(--subtle)]">
+            {head.map((h) => (
+              <th key={h} className="px-3 py-2 font-semibold">
+                {h}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-white/8">
+          {rows.map((r, i) => (
+            <tr key={i} className="align-top">
+              {r.map((c, j) => (
+                <td key={j} className="px-3 py-2.5">
+                  {c}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   )
 }

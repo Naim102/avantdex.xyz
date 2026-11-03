@@ -43,5 +43,7 @@ export default defineConfig({
   server: {
     allowedHosts: true,
     cors: true,
+    // Local development: forward /api to the FastAPI backend (override with API_PROXY_TARGET)
+    proxy: { '/api': { target: process.env.API_PROXY_TARGET ?? 'http://localhost:8000', changeOrigin: true } },
   },
 })

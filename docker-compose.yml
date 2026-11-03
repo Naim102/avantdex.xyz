@@ -1,15 +1,83 @@
-# Coolify: create a "Docker Compose" resource from this repo (branch main), then attach your domain
-# to the `web` service on port 80. Coolify's proxy handles HTTPS, so no ports are published.
+# Avantdex on Coolify (or any Docker host): PostgreSQL + API + indexer + web (nginx, prebuilt static frontend).
 #
-# This serves the prebuilt files in deploy/dist (no build step on the server). To change the contract
-# address, deploy block or RPC, edit .env, run `bun run build:static`, commit deploy/dist and redeploy.
-# To build from source on the server instead (needs ~1.5 GB RAM), set `dockerfile: Dockerfile.source`.
+# Coolify: New Resource -> Docker Compose -> this repo, branch main. Set the environment variables below in the
+# Coolify UI (see .env.example), then attach your domain to the `web` service on port 80. Coolify's proxy
+# handles HTTPS, so nothing is published on the host. The browser only ever talks to `web`; nginx forwards
+# /api/* to the API container, so no CORS is needed.
+#
+# Required before the first deploy: deploy the exchange contract to Arc Testnet (scripts/deploy-testnet.sh)
+# and set EXCHANGE_ADDRESS / EXCHANGE_DEPLOY_BLOCK. See docs/RUNBOOK.md.
+name: avantdex
+
+x-backend-env: &backend-env
+  DATABASE_URL: postgresql+psycopg://avantdex:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@postgres:5432/avantdex
+  # Arc Testnet. Testnet and mainnet settings must never be mixed.
+  CHAIN_ID: ${CHAIN_ID:-5042002}
+  RPC_URL: ${RPC_URL:-https://rpc.testnet.arc.io}
+  EXPLORER_URL: ${EXPLORER_URL:-https://explorer.testnet.arc.io}
+  USDC_ADDRESS: ${USDC_ADDRESS:-0x3600000000000000000000000000000000000000}
+  EXCHANGE_ADDRESS: ${EXCHANGE_ADDRESS:?set EXCHANGE_ADDRESS after deploying the contract}
+  EXCHANGE_DEPLOY_BLOCK: ${EXCHANGE_DEPLOY_BLOCK:?set EXCHANGE_DEPLOY_BLOCK}
+  FEE_COLLECTOR: ${FEE_COLLECTOR:-0x136a2C17E0E6C077F48F489BeC6DBCE3202CEbd6}
+
 services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: avantdex
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_DB: avantdex
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U avantdex -d avantdex"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build: ./backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      <<: *backend-env
+      ENV: production
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET to a random value of at least 32 characters}
+      AUTH_DOMAIN: ${AUTH_DOMAIN:-localhost}
+      AUTH_URI: ${AUTH_URI:-https://localhost}
+      BOOTSTRAP_ADMIN_ADDRESSES: ${BOOTSTRAP_ADMIN_ADDRESSES:-}
+      REQUIRE_TWO_PERSON_APPROVAL: ${REQUIRE_TWO_PERSON_APPROVAL:-false}
+    expose:
+      - "8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://localhost:8000/api/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+  indexer:
+    build: ./backend
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      <<: *backend-env
+      INDEXER_POLL_SECONDS: ${INDEXER_POLL_SECONDS:-2}
+    command: ["python", "-m", "app.indexer.run"]
+
   web:
     build:
       context: .
       dockerfile: Dockerfile
     restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
     expose:
       - "80"
     healthcheck:
@@ -18,3 +86,6 @@ services:
       timeout: 3s
       retries: 3
       start_period: 5s
+
+volumes:
+  pgdata:

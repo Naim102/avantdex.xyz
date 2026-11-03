@@ -1,125 +1,98 @@
-import { Link } from 'react-router-dom'
-import { ArrowRight, Handshake, Lock, ShieldCheck } from 'lucide-react'
-import { formatUsdc } from '@/onchain-money'
-import { useListings, useOrders } from '@/hooks/useMarket'
-import { EmptyState, LegalNote, ListingCard, ListingGrid, SkeletonGrid } from '@/components/ui'
+import { useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
+import { ArrowRight, Briefcase, Compass, Megaphone, Search, FileText } from 'lucide-react'
+import { MarketCard } from '@/components/MarketCard'
+import { EmptyState, Skeleton } from '@/components/ui'
+import { api, type Market } from '@/lib/api'
 
-const STEPS = [
-  { Icon: Lock, title: 'Pay into escrow', body: 'Your USDC is held by the escrow contract, never by the seller.' },
-  { Icon: Handshake, title: 'Seller authorizes', body: 'The seller explicitly approves and hands over the asset or rights.' },
-  { Icon: ShieldCheck, title: 'Verified, then released', body: 'Payment is released only after the transfer is verified onchain. Otherwise you are refunded.' },
-]
-
-function Stat({ label, value }: { label: string; value: string }) {
+function Card({ to, icon, title, body }: { to: string; icon: React.ReactNode; title: string; body: string }) {
   return (
-    <div className="glass-inner rounded-2xl px-4 py-3">
-      <div className="display text-2xl font-bold tabular-nums">{value}</div>
-      <div className="mt-0.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--subtle)]">{label}</div>
-    </div>
+    <Link to={to} className="glass group flex items-center gap-4 rounded-3xl p-5 transition-colors hover:border-[var(--border-strong)]">
+      <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-white/8 text-[var(--accent)]">{icon}</div>
+      <div className="min-w-0 flex-1">
+        <div className="display text-lg font-semibold">{title}</div>
+        <div className="text-sm text-[var(--subtle)]">{body}</div>
+      </div>
+      <ArrowRight className="size-5 text-[var(--subtle)] transition-transform group-hover:translate-x-1" />
+    </Link>
   )
 }
 
 export default function Home() {
-  const { listings, isLoading } = useListings()
-  const { orders } = useOrders()
-
-  const active = listings.filter((l) => l.status === 1)
-  const featured = [...active].sort((a, b) => (b.price > a.price ? 1 : b.price < a.price ? -1 : 0)).slice(0, 3)
-  const featuredIds = new Set(featured.map((l) => l.id))
-  const recent = listings.filter((l) => !featuredIds.has(l.id)).slice(0, 6)
-  const completed = orders.filter((o) => o.status === 2)
-  const volume = completed.reduce((sum, o) => sum + o.price, 0n)
+  const navigate = useNavigate()
+  const [q, setQ] = useState('')
+  const { data, isLoading, isError } = useQuery({ queryKey: ['markets', 'home'], queryFn: () => api.get<{ items: Market[] }>('/markets?tab=trending'), refetchInterval: 15000 })
+  const markets = (data?.items ?? []).slice(0, 6)
 
   return (
-    <div className="space-y-14">
-      <section className="glass relative overflow-hidden rounded-[2rem] px-6 py-12 sm:px-12 sm:py-16">
-        <div className="pointer-events-none absolute -right-24 -top-24 size-96 rounded-full border border-white/8" />
-        <div className="pointer-events-none absolute -right-10 -top-10 size-72 rounded-full border border-white/10" />
-        <div className="relative max-w-2xl">
-          <span className="chip mb-5">Built on Arc, settled in USDC</span>
-          <h1 className="display text-5xl font-bold leading-[1.02] text-balance sm:text-6xl">
-            List. Buy. <span className="text-[var(--accent)]">Transfer.</span>
-          </h1>
-          <p className="mt-5 max-w-xl text-lg text-pretty text-[var(--muted)]">
-            A simple marketplace for tokens, NFTs, and onchain project rights. Payment sits in escrow until the transfer is verified onchain.
-          </p>
-          <div className="mt-8 flex flex-wrap gap-3">
-            <Link to="/create" className="btn btn-primary">
-              List Asset
-            </Link>
-            <Link to="/explore" className="btn btn-ghost">
-              Explore listings <ArrowRight className="size-4" />
-            </Link>
+    <div className="space-y-12">
+      <section className="space-y-6 pt-4 text-center">
+        <h1 className="display mx-auto max-w-3xl text-balance text-4xl font-bold sm:text-6xl">
+          Trade tokens <span className="text-[var(--accent)]">before they launch</span>
+        </h1>
+        <p className="mx-auto max-w-xl text-pretty text-[var(--subtle)]">Order-book pre-market trading settled in USDC on Arc. Funds stay in escrow until the token is delivered.</p>
+        <form
+          role="search"
+          className="relative mx-auto max-w-xl"
+          onSubmit={(e) => {
+            e.preventDefault()
+            void navigate(`/explore${q.trim() ? `?q=${encodeURIComponent(q.trim())}` : ''}`)
+          }}
+        >
+          <Search className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-[var(--subtle)]" />
+          <input className="field !min-h-14 !rounded-2xl !pl-12 text-base" placeholder="Search Tokens" aria-label="Search tokens" value={q} onChange={(e) => setQ(e.target.value)} maxLength={60} />
+        </form>
+      </section>
+
+      <section className="grid gap-4 sm:grid-cols-2">
+        <Card to="/explore" icon={<Compass className="size-6" />} title="Explore" body="Browse upcoming token markets" />
+        <Card to="/portfolio" icon={<Briefcase className="size-6" />} title="Portfolio" body="Orders, trades and settlement" />
+      </section>
+
+      <section className="space-y-5" aria-labelledby="markets-h">
+        <div className="flex items-end justify-between gap-3">
+          <div>
+            <h2 id="markets-h" className="display text-2xl font-bold">
+              Marketplace
+            </h2>
+            <p className="text-sm text-[var(--subtle)]">Available Markets</p>
           </div>
+          <Link to="/explore" className="btn btn-ghost">
+            Explore All <ArrowRight className="size-4" />
+          </Link>
         </div>
-        <div className="relative mt-10 grid max-w-xl grid-cols-3 gap-3">
-          <Stat label="Active listings" value={active.length.toString()} />
-          <Stat label="Sales" value={completed.length.toString()} />
-          <Stat label="USDC volume" value={Number(formatUsdc(volume)).toLocaleString('en-US', { maximumFractionDigits: 2 })} />
-        </div>
+        {isLoading ? (
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {[0, 1, 2].map((i) => (
+              <Skeleton key={i} className="h-72" />
+            ))}
+          </div>
+        ) : isError ? (
+          <EmptyState title="Markets are unavailable" body="The Avantdex API could not be reached. Try again in a moment." />
+        ) : markets.length === 0 ? (
+          <EmptyState title="No markets yet" body="No project has an active market on Avantdex yet. Markets appear here after a project is approved, verified and activated." />
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {markets.map((m) => (
+              <MarketCard key={m.id} m={m} />
+            ))}
+          </div>
+        )}
       </section>
 
-      {isLoading ? (
-        <SkeletonGrid count={3} />
-      ) : listings.length === 0 ? (
-        <EmptyState
-          title="No listings yet"
-          body="The marketplace is live on Arc Testnet. Be the first to list a supported asset."
-          action={
-            <Link to="/create" className="btn btn-primary">
-              Create the first listing
-            </Link>
-          }
-        />
-      ) : (
-        <>
-          {featured.length > 0 && (
-            <section>
-              <h2 className="display mb-4 text-2xl font-semibold">Featured</h2>
-              <ListingGrid>
-                {featured.map((l) => (
-                  <ListingCard key={l.id.toString()} listing={l} />
-                ))}
-              </ListingGrid>
-            </section>
-          )}
-          {recent.length > 0 && (
-            <section>
-              <div className="mb-4 flex items-end justify-between">
-                <h2 className="display text-2xl font-semibold">Recent listings</h2>
-                <Link to="/explore" className="text-sm font-semibold text-[var(--accent)] hover:underline">
-                  View all
-                </Link>
-              </div>
-              <ListingGrid>
-                {recent.map((l) => (
-                  <ListingCard key={l.id.toString()} listing={l} />
-                ))}
-              </ListingGrid>
-            </section>
-          )}
-        </>
-      )}
-
-      <section>
-        <h2 className="display mb-4 text-2xl font-semibold">How a sale works</h2>
-        <div className="grid gap-4 md:grid-cols-3">
-          {STEPS.map(({ Icon, title, body }, i) => (
-            <div key={title} className="glass rounded-3xl p-5">
-              <div className="mb-4 flex items-center justify-between">
-                <div className="flex size-10 items-center justify-center rounded-xl bg-white/7">
-                  <Icon className="size-5 text-[var(--accent)]" strokeWidth={1.75} />
-                </div>
-                <span className="display text-sm font-semibold text-[var(--subtle)]">0{i + 1}</span>
-              </div>
-              <h3 className="display text-lg font-semibold">{title}</h3>
-              <p className="mt-1.5 text-sm text-pretty text-[var(--subtle)]">{body}</p>
-            </div>
-          ))}
+      <section className="space-y-5" aria-labelledby="listing-h">
+        <div>
+          <h2 id="listing-h" className="display text-2xl font-bold">
+            Create Listing
+          </h2>
+          <p className="text-sm text-[var(--subtle)]">Get a project onto Avantdex. This is not an order.</p>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Card to="/list/submit" icon={<FileText className="size-6" />} title="Submit Your Project" body="For project owners and authorised team representatives" />
+          <Card to="/list/request" icon={<Megaphone className="size-6" />} title="Request a Listing" body="Suggest a project you would like to trade" />
         </div>
       </section>
-
-      <LegalNote />
     </div>
   )
 }

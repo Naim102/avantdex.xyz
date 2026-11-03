@@ -28,7 +28,6 @@ def config(db: Session = Depends(get_db)) -> dict:
     notice = db.get(Setting, "notice")
     return {
         "chain_id": s.chain_id,
-        "rpc_url": s.rpc_url,
         "explorer_url": s.explorer_url,
         "usdc_address": s.usdc_address,
         "usdc_decimals": 6,
@@ -413,6 +412,7 @@ def portfolio_trades(
             "settlement_deadline": iso(m.settlement_deadline),
             "token_address": m.token_address,
             "lot_size": str(m.lot_size),
+            "token_decimals": m.token_decimals,
         }
         items.append(d)
     return {"items": items}

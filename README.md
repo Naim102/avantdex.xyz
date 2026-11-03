@@ -1,39 +1,75 @@
-# AllocX
+# Avantdex
 
-List. Buy. Transfer. A USDC marketplace on Arc for tokens, NFTs and onchain project rights. Buyers pay into escrow, and the seller is paid only after the transfer is verified onchain. If the transfer fails or the delivery window expires, the buyer is refunded.
+Pre-market trading on **Arc Network**. Users trade tokens that have not launched yet through an on-chain order book, settled in USDC with escrow. After the token launch the seller delivers the token **atomically** (token and payment move in one transaction); if they do not, the buyer receives their payment plus the seller's collateral.
 
-Built with [Arc Studio](https://studio.arc.io)
+> **Status: Arc Testnet only. Unaudited.** Do not use with real value. See [docs/RUNBOOK.md](docs/RUNBOOK.md) to deploy and [PRD.md](PRD.md) / [R&D.md](R&D.md) for the full product and research documents.
 
-## What you can do
+## Platform fees
 
-- Browse, search and filter listings, then buy with USDC.
-- List ERC-20 tokens, ERC-721 NFTs, ERC-1155 tokens, single-step contract ownership, and AccessControl admin roles.
-- See live escrow status, deadlines and transaction hashes for every order.
-- Review your listings, purchases, assets and transaction history in the dashboard.
-- Unsupported assets (for example contracts with a two-step owner handover) are shown as unsupported instead of being listed.
+Paid in USDC to the fee collector `0x136a2C17E0E6C077F48F489BeC6DBCE3202CEbd6`.
 
-Onchain ownership and admin rights are not legal ownership of a company, brand or intellectual property.
+| Action | Fee |
+|---|---|
+| Buyer (successful trade) | 0.5% |
+| Seller (successful trade) | 0.5% |
+| Unfilled order cancellation | 0% |
+| Project listing | 0% |
+| Community listing request | 0% |
+| Failed transaction | 0% platform fee |
 
-## Tech stack
+"Successful trade" means a trade that reaches *Settled*. Defaults, cancelled markets, refunds and order cancellations never pay a platform fee.
 
-React, Vite, TypeScript, Tailwind CSS, wagmi, viem and ConnectKit on the frontend. Solidity 0.8.28 with OpenZeppelin and Foundry for the contracts. Network: Arc Testnet.
+## How it fits together
 
-## Development
+```
+Browser (React) ──/api──▶ nginx ──▶ FastAPI ──▶ PostgreSQL ◀── Indexer (web3.py) ◀── Arc RPC ◀── AvantdexExchange
+      │                                                                                  ▲
+      └────────────── wallet signs transactions ─────────────────────────────────────────┘
+```
 
-Prerequisites: [Bun](https://bun.sh) and [Foundry](https://book.getfoundry.sh).
+| Part | Folder | What it does |
+|---|---|---|
+| Smart contract | `contracts/AvantdexExchange.sol` | Orders, matching, escrow, settlement, fees, market status. **All money rules live here.** |
+| Backend | `backend/` | FastAPI + PostgreSQL: projects, verification badges, admin dashboard API, audit logs, order book/portfolio API |
+| Indexer | `backend/app/indexer/` | Copies contract events into PostgreSQL (the chain stays the source of truth; the DB can be rebuilt by replaying) |
+| Frontend | `src/` | Home, Explore, Market (order book + trade panel), Portfolio, Create Listing, Admin dashboard |
+| Legacy | `contracts/AllocX*.sol`, `contracts/legacy/` | The earlier AllocX v1 marketplace (still deployed, not used by Avantdex) |
+
+Admins can **never** move escrowed funds: there is no such function. Users keep every exit (cancel order, settle, claim default, refund) even if the market is suspended or the contract is paused.
+
+## Run everything locally (no real network, no real money)
+
+Needs Docker and Bun.
+
+```bash
+docker compose -f docker-compose.dev.yml up --build   # PostgreSQL + local chain + contracts + API + indexer
+```
 
 ```bash
 bun install
-bun run dev
+echo "VITE_RPC_URL=http://localhost:8545" > .env.local   # point the wallet reads at the local chain
+bun run dev                                             # frontend on http://localhost:5173
 ```
 
-Other commands: `bun run check` (lint and typecheck), `bun run contracts:build`, `bun run contracts:test`.
+Use a browser wallet pointed at `http://localhost:8545` (chain id 5042002) and import one of anvil's public dev accounts (account 0 is the admin: `0xf39F…2266`). Contract roles and the dashboard `super_admin` belong to account 0.
 
-## Environment variables
+## Tests
 
-- `VITE_ALLOCX_MARKETPLACE`: address of the deployed AllocX marketplace contract on Arc Testnet.
-- `VITE_ALLOCX_DEPLOY_BLOCK`: block the marketplace was deployed at. Transaction history is read from this block onward.
+```bash
+docker run --rm -v "$PWD:/app" -w /app --entrypoint forge ghcr.io/foundry-rs/foundry:v1.7.1 test   # contracts
+bun run check                                                                                       # lint + typecheck
+```
 
-## Contracts
+Backend tests (PostgreSQL + a local chain), see [docs/RUNBOOK.md](docs/RUNBOOK.md#tests).
 
-Three contracts in `contracts/`: the marketplace (listings and orders), the escrow (holds and releases USDC) and the transfer module (checks and performs asset transfers). The marketplace creates the other two when it is deployed, so only one address is configured.
+## Deploy
+
+1. Deploy the contract to Arc Testnet from **your** wallet: `./scripts/deploy-testnet.sh` ([runbook](docs/RUNBOOK.md)).
+2. Put the printed `EXCHANGE_ADDRESS` / `EXCHANGE_DEPLOY_BLOCK` in your environment ([.env.example](.env.example)).
+3. Deploy `docker-compose.yml` on Coolify. The web container serves the prebuilt frontend in `deploy/dist` (nothing is compiled on the server). After changing frontend code run `bun run build:static` and commit `deploy/dist`.
+
+## Notes
+
+* USDC on Arc has **6 decimals** through its ERC-20 interface (the native gas token view uses 18). Testnet chain id **5042002**, RPC `https://rpc.testnet.arc.io`, faucet `https://faucet.circle.com`.
+* Legal pages are placeholders marked "Draft — not legal advice". No restricted-jurisdiction list, legal entity or compliance status is claimed.
+* Onchain ownership of tokens or rights is not legal ownership of a company, brand or intellectual property.
