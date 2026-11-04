@@ -4,13 +4,14 @@ import { useQuery } from '@tanstack/react-query'
 import { ArrowRight, ArrowUpRight, Briefcase, Compass, FileText, Megaphone, Search } from 'lucide-react'
 import { MarketCard } from '@/components/MarketCard'
 import { EmptyState, Skeleton } from '@/components/ui'
+import { UpcomingSection } from '@/components/UpcomingSection'
 import { api, type Market } from '@/lib/api'
 
 function Tile({ to, icon, title, body, color }: { to: string; icon: React.ReactNode; title: string; body: string; color?: string }) {
   return (
     <Link
       to={to}
-      className="glass group flex items-center gap-4 rounded-3xl p-5 transition-all duration-100 hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[7px_7px_0_var(--line)]"
+      className="glass group flex items-center gap-4 rounded-3xl p-4 sm:p-5 transition-all duration-100 hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[7px_7px_0_var(--line)]"
       style={color ? { background: color, color: '#262627' } : undefined}
     >
       <div className="flex size-14 shrink-0 items-center justify-center rounded-xl border-2 border-[#262627] bg-white text-[#262627]">{icon}</div>
@@ -47,7 +48,7 @@ export default function Home() {
     <div className="space-y-14">
       <section className="grid items-center gap-8 pt-2 lg:grid-cols-[1fr_auto]">
         <div className="space-y-6">
-          <h1 className="display text-balance text-5xl uppercase leading-[0.95] sm:text-7xl">
+          <h1 className="display text-balance text-[2.5rem] uppercase leading-[0.95] sm:text-7xl">
             Trade tokens <span className="mark">before they launch</span>
           </h1>
           <p className="max-w-xl text-pretty text-lg font-medium text-[var(--muted)]">Order-book pre-market trading settled in USDC on Arc. Your funds stay in escrow until the token is delivered.</p>
@@ -105,6 +106,8 @@ export default function Home() {
           </div>
         )}
       </section>
+
+      <UpcomingSection limit={6} />
 
       <section className="space-y-6" aria-labelledby="listing-h">
         <SectionHead id="listing-h" title="Create Listing" sub="Get a project onto Avantdex. This is not an order." />

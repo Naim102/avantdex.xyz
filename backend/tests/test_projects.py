@@ -154,30 +154,38 @@ def _admin(seed, *roles):
     return w
 
 
-def test_status_machine_and_role_permissions(client):
+def test_status_machine_any_admin_can_approve(client):
     _, applicant_h, pid = _submitted(client)
-    reviewer = login(client, _admin(31, "project_reviewer"))
-    verifier = login(client, _admin(32, "verification_admin"))
-    manager = login(client, _admin(33, "market_manager"))
+    admin = login(client, _admin(31, "super_admin"))
 
     def go(h, to, reason=""):
         return client.post(f"/api/admin/projects/{pid}/transition", headers=h, json={"to": to, "reason": reason})
 
-    assert go(reviewer, "Approved").status_code == 409  # not an allowed jump
-    assert go(manager, "Under Review").status_code == 403  # wrong role
-    assert go(reviewer, "Under Review").status_code == 200
-    assert go(reviewer, "Rejected").status_code == 422  # reason required
-    assert go(reviewer, "Verification").status_code == 200
-    assert go(reviewer, "Approved").status_code == 403  # reviewer cannot approve after verification
-    assert go(verifier, "Approved").status_code == 200
-    r = client.get(f"/api/admin/projects/{pid}", headers=reviewer).json()
+    assert go(admin, "Live").status_code == 409  # not an allowed jump
+    assert go(admin, "Rejected").status_code == 422  # reason required
+    assert go(admin, "Approved").status_code == 200  # one click from Submitted
+    r = client.get(f"/api/admin/projects/{pid}", headers=admin).json()
     assert r["status"] == "Approved"
-    assert [h["to"] for h in r["history"]] == ["Draft", "Submitted", "Under Review", "Verification", "Approved"]
+    assert [h["to"] for h in r["history"]] == ["Draft", "Submitted", "Approved"]
     # approval did not create a market
-    assert client.get("/api/admin/markets", headers=manager).json()["items"] == []
+    assert client.get("/api/admin/markets", headers=admin).json()["items"] == []
     with SessionLocal() as db:
         actions = [a.action for a in db.scalars(select(AuditLog))]
-    assert actions.count("project.transition") == 3
+    assert actions.count("project.transition") == 1
+
+
+def test_non_admin_cannot_approve_and_approved_projects_are_listed_as_upcoming(client):
+    _, applicant_h, pid = _submitted(client)
+    assert client.get("/api/projects/upcoming").json()["items"] == []  # nothing before approval
+    assert client.post(f"/api/admin/projects/{pid}/transition", headers=applicant_h, json={"to": "Approved"}).status_code == 403
+    admin = login(client, _admin(31, "project_reviewer"))  # legacy role names act as admin
+    assert client.post(f"/api/admin/projects/{pid}/transition", headers=admin, json={"to": "Approved"}).status_code == 200
+    items = client.get("/api/projects/upcoming").json()["items"]
+    assert [i["status"] for i in items] == ["Approved"] and items[0]["token_symbol"]
+    assert "applicant" not in items[0] and "evidence" not in items[0]  # public view only
+    assert client.get("/api/markets").json()["items"] == []  # still not tradable
+    client.post(f"/api/admin/projects/{pid}/transition", headers=admin, json={"to": "Rejected", "reason": "no"})
+    assert client.get("/api/projects/upcoming").json()["items"] == []
 
 
 def test_changes_requested_loop(client):
@@ -201,12 +209,12 @@ def test_drafts_are_invisible_to_admins(client):
     assert client.get("/api/admin/projects", headers=reviewer).json()["items"] == []
 
 
-def test_badges_only_verification_admin_and_audited(client):
+def test_badges_admin_only_and_audited(client):
     _, _, pid = _submitted(client)
-    reviewer = login(client, _admin(31, "project_reviewer"))
+    applicant = login(client, make_wallet(70))
     verifier = login(client, _admin(32, "verification_admin"))
     body = {"badge": "contract_verified", "evidence": "Address confirmed on official docs"}
-    assert client.post(f"/api/admin/projects/{pid}/badges", headers=reviewer, json=body).status_code == 403
+    assert client.post(f"/api/admin/projects/{pid}/badges", headers=applicant, json=body).status_code == 403
     assert client.post(f"/api/admin/projects/{pid}/badges", headers=verifier, json={"badge": "safe", "evidence": "xxx"}).status_code == 422
     r = client.post(f"/api/admin/projects/{pid}/badges", headers=verifier, json=body)
     assert r.status_code == 200
@@ -249,9 +257,9 @@ def test_listing_request_admin_roles(client):
     h = login(client, make_wallet(41))
     rid = client.post("/api/listing-requests", json={"project_name": "Foo", "token_symbol": "FOO", "link": "https://f.example.com", "reason": "r"}, headers=h).json()["id"]
     reviewer = login(client, _admin(31, "project_reviewer"))
-    manager = login(client, _admin(33, "market_manager"))
-    assert client.get("/api/admin/listing-requests", headers=manager).status_code == 403
-    assert client.post(f"/api/admin/listing-requests/{rid}", headers=manager, json={"status": "Declined"}).status_code == 403
+    outsider = login(client, make_wallet(71))
+    assert client.get("/api/admin/listing-requests", headers=outsider).status_code == 403
+    assert client.post(f"/api/admin/listing-requests/{rid}", headers=outsider, json={"status": "Declined"}).status_code == 403
     assert client.post(f"/api/admin/listing-requests/{rid}", headers=reviewer, json={"status": "bogus"}).status_code == 422
     assert client.post(f"/api/admin/listing-requests/{rid}", headers=reviewer, json={"status": "Declined", "note": "no"}).status_code == 200
     assert client.get("/api/listing-requests/summary").json()["items"] == []
@@ -266,14 +274,14 @@ def test_role_management_super_admin_only(client, admin_headers):
     assert r.status_code == 200
     assert client.post("/api/admin/roles", headers=admin_headers, json={"address": other.address, "role": "support_admin"}).status_code == 409
     assert client.post("/api/admin/roles", headers=admin_headers, json={"address": other.address, "role": "root"}).status_code == 422
-    h = login(client, other)
-    assert client.post("/api/admin/roles", headers=h, json={"address": other.address, "role": "super_admin"}).status_code == 403
+    outsider = login(client, make_wallet(72))
+    assert client.post("/api/admin/roles", headers=outsider, json={"address": other.address, "role": "super_admin"}).status_code == 403
     roles = client.get("/api/admin/roles", headers=admin_headers).json()["items"]
-    assert {x["role"] for x in roles} == {"super_admin", "support_admin"}
-    sa = next(x for x in roles if x["role"] == "super_admin")
-    assert client.delete(f"/api/admin/roles/{sa['id']}", headers=admin_headers).status_code == 409  # last super admin
-    sp = next(x for x in roles if x["role"] == "support_admin")
-    assert client.delete(f"/api/admin/roles/{sp['id']}", headers=admin_headers).status_code == 200
+    assert [x["role"] for x in roles] == ["super_admin", "super_admin"]  # one admin level
+    added = next(x for x in roles if x["address"] == other.address.lower())
+    mine = next(x for x in roles if x["address"] != other.address.lower())
+    assert client.delete(f"/api/admin/roles/{added['id']}", headers=admin_headers).status_code == 200  # another admin remains
+    assert client.delete(f"/api/admin/roles/{mine['id']}", headers=admin_headers).status_code == 409  # last admin stays
 
 
 def test_notice_setting_shows_publicly_and_is_audited(client, admin_headers):

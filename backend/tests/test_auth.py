@@ -89,14 +89,14 @@ def test_admin_routes_forbidden_for_normal_wallet(client):
         assert r.json()["error"]["code"] == "forbidden"
 
 
-def test_admin_overview_and_roles_check_per_route(client):
-    reviewer = make_wallet(11)
-    grant({reviewer.address: ["project_reviewer"]})
-    h = login(client, reviewer)
-    assert client.get("/api/admin/overview", headers=h).status_code == 200
-    assert client.get("/api/admin/projects", headers=h).status_code == 200
-    assert client.get("/api/admin/roles", headers=h).status_code == 403  # super_admin only
-    assert client.get("/api/admin/users", headers=h).status_code == 403  # support_admin only
+def test_every_admin_can_use_every_dashboard_route(client):
+    # split roles no longer limit anything: any admin wallet has full dashboard access
+    for seed, role in ((11, "super_admin"), (13, "project_reviewer"), (14, "support_admin")):
+        w = make_wallet(seed)
+        grant({w.address: [role]})
+        h = login(client, w)
+        for path in ("/api/admin/overview", "/api/admin/projects", "/api/admin/roles", "/api/admin/users", "/api/admin/markets", "/api/admin/disputes", "/api/admin/settings"):
+            assert client.get(path, headers=h).status_code == 200, (role, path)
 
 
 def test_error_shape_is_consistent(client):
@@ -151,8 +151,8 @@ def test_admins_and_roles_from_environment(monkeypatch, client):
     get_settings.cache_clear()
     bootstrap_admins()
     assert _roles(boss.address) == ["super_admin"]
-    assert _roles(rev.address) == ["project_reviewer", "support_admin"]
-    assert _roles(ver.address) == ["verification_admin"]  # unknown role ignored
+    assert _roles(rev.address) == ["super_admin"]  # any role name in the environment means admin
+    assert _roles(ver.address) == ["super_admin"]
 
 
 def test_removing_from_environment_revokes_env_roles_only(monkeypatch, client):
@@ -172,7 +172,7 @@ def test_removing_from_environment_revokes_env_roles_only(monkeypatch, client):
     get_settings.cache_clear()
     bootstrap_admins()
     assert _roles(rev.address) == []  # removed from env -> revoked
-    assert _roles(dash.address) == ["support_admin"]  # dashboard grants are untouched
+    assert _roles(dash.address) == ["support_admin"]  # dashboard grants are untouched (legacy rows still count as admin)
     assert _roles(boss.address) == ["super_admin"]
 
 

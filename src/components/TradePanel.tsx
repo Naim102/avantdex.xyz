@@ -137,7 +137,7 @@ export function TradePanel({ market, cfg, initialSide, pick }: { market: Market;
   )
 
   return (
-    <div className="glass space-y-4 rounded-3xl p-5">
+    <div className="glass space-y-4 rounded-3xl p-4 sm:p-5">
       <div className="flex gap-1 rounded-xl border-2 border-[var(--line)] bg-[var(--surface)] p-1" role="group" aria-label="Order side">
         {sideBtn('buy')}
         {sideBtn('sell')}

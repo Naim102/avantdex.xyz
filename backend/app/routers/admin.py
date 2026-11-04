@@ -33,28 +33,24 @@ from ..models import (
     IndexerState,
     utcnow,
 )
-from ..security import ROLES, ApiError, Session_, audit, normalize_address, require_any_admin, require_roles
+from ..security import LEGACY_ROLES, ROLES, ApiError, Session_, audit, normalize_address, require_any_admin
 from ..utils import BADGES, clean_text, iso, project_private
 from .public import market_json, bulk_stats
 from .user import dispute_json
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
-# (from, to) -> roles allowed (super_admin is always allowed)
-TRANSITIONS: dict[tuple[str, str], set[str]] = {
-    ("Submitted", "Under Review"): {"project_reviewer"},
-    ("Submitted", "Rejected"): {"project_reviewer"},
-    ("Under Review", "Verification"): {"project_reviewer"},
-    ("Under Review", "Changes Requested"): {"project_reviewer"},
-    ("Under Review", "Rejected"): {"project_reviewer"},
-    ("Verification", "Approved"): {"verification_admin"},
-    ("Verification", "Changes Requested"): {"verification_admin"},
-    ("Verification", "Rejected"): {"verification_admin"},
-    ("Approved", "Rejected"): {"project_reviewer"},
-    ("Approved", "Market Setup"): {"market_manager"},
-    ("Market Setup", "Approved"): {"market_manager"},
-    ("Live", "Delisted"): {"market_manager"},
-    ("Suspended", "Delisted"): {"market_manager"},
+# from-status -> statuses an admin may move the project to (every admin can take every step)
+TRANSITIONS: dict[str, set[str]] = {
+    "Submitted": {"Under Review", "Approved", "Changes Requested", "Rejected"},
+    "Under Review": {"Verification", "Approved", "Changes Requested", "Rejected"},
+    "Verification": {"Approved", "Changes Requested", "Rejected"},
+    "Changes Requested": {"Under Review", "Approved", "Rejected"},
+    "Rejected": {"Under Review", "Approved"},
+    "Approved": {"Market Setup", "Under Review", "Rejected"},
+    "Market Setup": {"Approved"},
+    "Live": {"Delisted"},
+    "Suspended": {"Delisted"},
 }
 NEEDS_REASON = {"Rejected", "Changes Requested", "Delisted"}
 
@@ -90,7 +86,7 @@ def overview(user: Session_ = Depends(require_any_admin), db: Session = Depends(
 @router.get("/projects")
 def list_projects(
     status: str = Query("", max_length=24),
-    user: Session_ = Depends(require_roles("project_reviewer", "verification_admin", "market_manager", "settlement_manager", "support_admin")),
+    user: Session_ = Depends(require_any_admin),
     db: Session = Depends(get_db),
 ) -> dict:
     q = select(Project).options(joinedload(Project.badges)).order_by(Project.id.desc())
@@ -104,7 +100,7 @@ def list_projects(
 @router.get("/projects/{pid}")
 def get_project(
     pid: int,
-    user: Session_ = Depends(require_roles("project_reviewer", "verification_admin", "market_manager", "settlement_manager", "support_admin")),
+    user: Session_ = Depends(require_any_admin),
     db: Session = Depends(get_db),
 ) -> dict:
     p = db.get(Project, pid)
@@ -124,11 +120,8 @@ def transition(pid: int, body: TransitionIn, user: Session_ = Depends(require_an
     p = db.get(Project, pid)
     if p is None or p.status == "Draft":
         raise ApiError(404, "project_not_found", "Project not found")
-    allowed = TRANSITIONS.get((p.status, body.to))
-    if allowed is None:
+    if body.to not in TRANSITIONS.get(p.status, set()):
         raise ApiError(409, "invalid_transition", f"{p.status} -> {body.to} is not an allowed transition")
-    if not user.has_any(*allowed):
-        raise ApiError(403, "forbidden", f"Your role cannot move a project from {p.status} to {body.to}")
     reason = clean_text(body.reason, "Reason", 2000, required=body.to in NEEDS_REASON)
     before = {"status": p.status}
     db.add(ProjectStatusHistory(project_id=p.id, from_status=p.status, to_status=body.to, actor=user.address, reason=reason))
@@ -150,7 +143,7 @@ class BadgeIn(BaseModel):
 
 
 @router.post("/projects/{pid}/badges")
-def grant_badge(pid: int, body: BadgeIn, user: Session_ = Depends(require_roles("verification_admin")), db: Session = Depends(get_db)) -> dict:
+def grant_badge(pid: int, body: BadgeIn, user: Session_ = Depends(require_any_admin), db: Session = Depends(get_db)) -> dict:
     p = db.get(Project, pid)
     if p is None or p.status == "Draft":
         raise ApiError(404, "project_not_found", "Project not found")
@@ -169,7 +162,7 @@ def grant_badge(pid: int, body: BadgeIn, user: Session_ = Depends(require_roles(
 
 
 @router.delete("/projects/{pid}/badges/{badge}")
-def revoke_badge(pid: int, badge: str, user: Session_ = Depends(require_roles("verification_admin")), db: Session = Depends(get_db)) -> dict:
+def revoke_badge(pid: int, badge: str, user: Session_ = Depends(require_any_admin), db: Session = Depends(get_db)) -> dict:
     p = db.get(Project, pid)
     if p is None:
         raise ApiError(404, "project_not_found", "Project not found")
@@ -190,7 +183,7 @@ def revoke_badge(pid: int, badge: str, user: Session_ = Depends(require_roles("v
 
 
 @router.get("/listing-requests")
-def list_requests(user: Session_ = Depends(require_roles("project_reviewer", "support_admin")), db: Session = Depends(get_db)) -> dict:
+def list_requests(user: Session_ = Depends(require_any_admin), db: Session = Depends(get_db)) -> dict:
     rows = db.scalars(select(ListingRequest).order_by(ListingRequest.id.desc()).limit(300))
     return {
         "items": [
@@ -208,7 +201,7 @@ class RequestUpdate(BaseModel):
 
 
 @router.post("/listing-requests/{rid}")
-def update_request(rid: int, body: RequestUpdate, user: Session_ = Depends(require_roles("project_reviewer")), db: Session = Depends(get_db)) -> dict:
+def update_request(rid: int, body: RequestUpdate, user: Session_ = Depends(require_any_admin), db: Session = Depends(get_db)) -> dict:
     r = db.get(ListingRequest, rid)
     if r is None:
         raise ApiError(404, "not_found", "Request not found")
@@ -273,13 +266,13 @@ def admin_market_json(m: Market, db: Session) -> dict:
 
 
 @router.get("/markets")
-def list_markets(user: Session_ = Depends(require_roles("market_manager", "settlement_manager", "support_admin", "project_reviewer")), db: Session = Depends(get_db)) -> dict:
+def list_markets(user: Session_ = Depends(require_any_admin), db: Session = Depends(get_db)) -> dict:
     rows = db.scalars(select(Market).options(joinedload(Market.project).joinedload(Project.badges)).order_by(Market.id.desc())).unique()
     return {"items": [admin_market_json(m, db) for m in rows]}
 
 
 @router.post("/markets")
-def create_market_draft(body: MarketDraftIn, user: Session_ = Depends(require_roles("market_manager")), db: Session = Depends(get_db)) -> dict:
+def create_market_draft(body: MarketDraftIn, user: Session_ = Depends(require_any_admin), db: Session = Depends(get_db)) -> dict:
     p = db.get(Project, body.project_id)
     if p is None:
         raise ApiError(404, "project_not_found", "Project not found")
@@ -315,7 +308,7 @@ def create_market_draft(body: MarketDraftIn, user: Session_ = Depends(require_ro
 
 
 @router.get("/markets/{mid}")
-def get_market(mid: int, user: Session_ = Depends(require_roles("market_manager", "settlement_manager", "support_admin", "project_reviewer")), db: Session = Depends(get_db)) -> dict:
+def get_market(mid: int, user: Session_ = Depends(require_any_admin), db: Session = Depends(get_db)) -> dict:
     m = db.get(Market, mid)
     if m is None:
         raise ApiError(404, "market_not_found", "Market not found")
@@ -323,7 +316,7 @@ def get_market(mid: int, user: Session_ = Depends(require_roles("market_manager"
 
 
 @router.get("/markets/{mid}/verify-config")
-def verify_config(mid: int, user: Session_ = Depends(require_roles("market_manager")), db: Session = Depends(get_db)) -> dict:
+def verify_config(mid: int, user: Session_ = Depends(require_any_admin), db: Session = Depends(get_db)) -> dict:
     """Reads the market back from the chain and compares every parameter with the draft (blocks activation on mismatch)."""
     m = db.get(Market, mid)
     if m is None:
@@ -357,7 +350,7 @@ def verify_config(mid: int, user: Session_ = Depends(require_roles("market_manag
 
 
 @router.post("/markets/{mid}/approve-activation")
-def approve_activation(mid: int, user: Session_ = Depends(require_roles("market_manager")), db: Session = Depends(get_db)) -> dict:
+def approve_activation(mid: int, user: Session_ = Depends(require_any_admin), db: Session = Depends(get_db)) -> dict:
     m = db.get(Market, mid)
     if m is None:
         raise ApiError(404, "market_not_found", "Market not found")
@@ -372,7 +365,7 @@ def approve_activation(mid: int, user: Session_ = Depends(require_roles("market_
 
 
 @router.get("/settlement")
-def settlement_overview(user: Session_ = Depends(require_roles("settlement_manager", "market_manager", "support_admin")), db: Session = Depends(get_db)) -> dict:
+def settlement_overview(user: Session_ = Depends(require_any_admin), db: Session = Depends(get_db)) -> dict:
     rows = db.scalars(
         select(Market).options(joinedload(Market.project)).where(Market.onchain_id.is_not(None), Market.status.in_(("Live", "Suspended", "SettlementOpen")))
         .order_by(Market.trading_end.asc())
@@ -381,7 +374,7 @@ def settlement_overview(user: Session_ = Depends(require_roles("settlement_manag
 
 
 @router.post("/markets/{mid}/note-action")
-def record_market_action(mid: int, body: dict, user: Session_ = Depends(require_roles("market_manager", "settlement_manager")), db: Session = Depends(get_db)) -> dict:
+def record_market_action(mid: int, body: dict, user: Session_ = Depends(require_any_admin), db: Session = Depends(get_db)) -> dict:
     """Audit trail for on-chain actions the manager signed in their wallet (suspend, open settlement, ...)."""
     m = db.get(Market, mid)
     if m is None:
@@ -397,7 +390,7 @@ def record_market_action(mid: int, body: dict, user: Session_ = Depends(require_
 
 
 @router.get("/disputes")
-def list_disputes(user: Session_ = Depends(require_roles("support_admin")), db: Session = Depends(get_db)) -> dict:
+def list_disputes(user: Session_ = Depends(require_any_admin), db: Session = Depends(get_db)) -> dict:
     return {"items": [dispute_json(d) for d in db.scalars(select(Dispute).order_by(Dispute.id.desc()).limit(300))]}
 
 
@@ -408,7 +401,7 @@ class DisputeUpdate(BaseModel):
 
 
 @router.post("/disputes/{did}")
-def update_dispute(did: int, body: DisputeUpdate, user: Session_ = Depends(require_roles("support_admin")), db: Session = Depends(get_db)) -> dict:
+def update_dispute(did: int, body: DisputeUpdate, user: Session_ = Depends(require_any_admin), db: Session = Depends(get_db)) -> dict:
     d = db.get(Dispute, did)
     if d is None:
         raise ApiError(404, "not_found", "Dispute not found")
@@ -428,7 +421,7 @@ def update_dispute(did: int, body: DisputeUpdate, user: Session_ = Depends(requi
 
 
 @router.get("/users")
-def users(user: Session_ = Depends(require_roles("support_admin")), limit: int = Query(200, ge=1, le=500), db: Session = Depends(get_db)) -> dict:
+def users(user: Session_ = Depends(require_any_admin), limit: int = Query(200, ge=1, le=500), db: Session = Depends(get_db)) -> dict:
     rows = list(db.scalars(select(User).order_by(User.last_seen.desc()).limit(limit)))
     out = []
     for u in rows:
@@ -439,7 +432,7 @@ def users(user: Session_ = Depends(require_roles("support_admin")), limit: int =
 
 
 @router.get("/roles")
-def roles(user: Session_ = Depends(require_roles("super_admin")), db: Session = Depends(get_db)) -> dict:
+def roles(user: Session_ = Depends(require_any_admin), db: Session = Depends(get_db)) -> dict:
     rows = list(db.scalars(select(AdminRole).order_by(AdminRole.id)))
     onchain: dict[str, dict] = {}
     try:  # read on-chain role holders for display (best effort)
@@ -460,24 +453,25 @@ def roles(user: Session_ = Depends(require_roles("super_admin")), db: Session = 
 class RoleIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
     address: str
-    role: str
+    role: str = "super_admin"
 
 
 @router.post("/roles")
-def grant_role(body: RoleIn, user: Session_ = Depends(require_roles("super_admin")), db: Session = Depends(get_db)) -> dict:
+def grant_role(body: RoleIn, user: Session_ = Depends(require_any_admin), db: Session = Depends(get_db)) -> dict:
+    """Add an admin. There is one admin level; `role` is accepted for older clients and must be a known name."""
     addr = normalize_address(body.address)
-    if body.role not in ROLES:
-        raise ApiError(422, "validation_error", f"role must be one of {', '.join(ROLES)}")
-    if db.scalar(select(AdminRole.id).where(AdminRole.address == addr, AdminRole.role == body.role)):
-        raise ApiError(409, "exists", "Role already granted")
-    db.add(AdminRole(address=addr, role=body.role, granted_by=user.address))
-    audit(db, user, "role.grant", "admin_role", addr, None, {"role": body.role})
+    if body.role not in ROLES and body.role not in LEGACY_ROLES:
+        raise ApiError(422, "validation_error", "role must be super_admin")
+    if db.scalar(select(AdminRole.id).where(AdminRole.address == addr)):
+        raise ApiError(409, "exists", "This wallet is already an admin")
+    db.add(AdminRole(address=addr, role="super_admin", granted_by=user.address))
+    audit(db, user, "role.grant", "admin_role", addr, None, {"role": "super_admin"})
     db.commit()
     return {"ok": True}
 
 
 @router.delete("/roles/{rid}")
-def revoke_role(rid: int, user: Session_ = Depends(require_roles("super_admin")), db: Session = Depends(get_db)) -> dict:
+def revoke_role(rid: int, user: Session_ = Depends(require_any_admin), db: Session = Depends(get_db)) -> dict:
     r = db.get(AdminRole, rid)
     if r is None:
         raise ApiError(404, "not_found", "Role assignment not found")
@@ -533,7 +527,7 @@ class SettingsIn(BaseModel):
 
 
 @router.put("/settings")
-def put_settings(body: SettingsIn, user: Session_ = Depends(require_roles("super_admin")), db: Session = Depends(get_db)) -> dict:
+def put_settings(body: SettingsIn, user: Session_ = Depends(require_any_admin), db: Session = Depends(get_db)) -> dict:
     text = clean_text(body.notice, "Notice", 500)
     row = db.get(Setting, "notice")
     before = {"notice": row.value if row else ""}

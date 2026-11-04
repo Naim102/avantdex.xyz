@@ -6,6 +6,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Bell, ChevronDown, Copy, ExternalLink, LogOut, Moon, Sun, TriangleAlert } from 'lucide-react'
 import { toast } from 'sonner'
 import { Logo } from '@/components/Logo'
+import { XLink } from '@/components/XIcon'
 import { CHAIN_ID, useAuth, useConfig, useUsdc } from '@/hooks/useApp'
 import { useTheme } from '@/hooks/useTheme'
 import { api } from '@/lib/api'
@@ -13,10 +14,10 @@ import { addrUrl, shortAddr } from '@/lib/format'
 import { fmtUsdc } from '@/lib/exchange'
 
 const NAV = [
-  { to: '/', label: 'Home', end: true },
-  { to: '/explore', label: 'Explore', end: false },
-  { to: '/portfolio', label: 'Portfolio', end: false },
-  { to: '/list', label: 'Create Listing', end: false },
+  { to: '/', label: 'Home', short: 'Home', end: true },
+  { to: '/explore', label: 'Explore', short: 'Explore', end: false },
+  { to: '/portfolio', label: 'Portfolio', short: 'Portfolio', end: false },
+  { to: '/list', label: 'Create Listing', short: 'List', end: false },
 ]
 
 const navClass = ({ isActive }: { isActive: boolean }) =>
@@ -55,9 +56,11 @@ function AccountMenu({ address }: { address: string }) {
   const item = 'flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-semibold hover:bg-[var(--tint-2)]'
   return (
     <div className="relative" ref={ref}>
-      <button onClick={() => setOpen((o) => !o)} aria-expanded={open} className="btn btn-ghost !min-h-11 !gap-2.5 !px-3">
-        <span className="tabular-nums whitespace-nowrap font-bold">{balance === undefined ? '…' : fmtUsdc(balance)}</span>
-        <span className="text-xs font-bold text-[var(--muted)]">USDC</span>
+      <button onClick={() => setOpen((o) => !o)} aria-expanded={open} className="btn btn-ghost !min-h-11 !gap-1.5 !px-2.5 sm:!gap-2.5 sm:!px-3">
+        <span className="tabular-nums whitespace-nowrap font-bold">
+          {balance === undefined ? '…' : <><span className="sm:hidden">{fmtUsdc(balance).replace(/\.\d+$/, '')}</span><span className="hidden sm:inline">{fmtUsdc(balance)}</span></>}
+        </span>
+        <span className="hidden text-xs font-bold text-[var(--muted)] sm:inline">USDC</span>
         <span className="mono hidden whitespace-nowrap rounded-md bg-[var(--tint-2)] px-2 py-0.5 text-xs sm:inline">{shortAddr(address)}</span>
         <ChevronDown className="size-4" />
       </button>
@@ -66,7 +69,7 @@ function AccountMenu({ address }: { address: string }) {
           <div className="px-3 py-2">
             <div className="label !mb-1">Connected</div>
             <div className="mono break-all text-xs">{address}</div>
-            {auth.roles.length > 0 && <div className="mt-1 text-xs font-bold text-[var(--accent-text)]">Admin: {auth.roles.join(', ')}</div>}
+            {auth.roles.length > 0 && <div className="mt-1 text-xs font-bold text-[var(--accent-text)]">Admin</div>}
           </div>
           <div className="my-1 h-0.5 bg-[var(--hair)]" />
           <button
@@ -122,10 +125,10 @@ function NotificationBell() {
 export function Header() {
   return (
     <header className="sticky top-0 z-30 border-b-2 border-[var(--line)] bg-[var(--bg)]">
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3">
+      <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-3 py-3 sm:gap-3 sm:px-4">
         <Link to="/" className="flex items-center gap-2.5" aria-label="Avantdex home">
-          <Logo className="size-10" />
-          <span className="display text-xl font-bold uppercase tracking-tight">Avantdex</span>
+          <Logo className="size-9 sm:size-10" />
+          <span className="display text-lg font-bold uppercase tracking-tight sm:text-xl">Avantdex</span>
           <span className="chip ml-1 hidden !bg-[var(--warn-bg)] sm:inline-flex">Arc Network</span>
         </Link>
         <nav className="no-scrollbar hidden gap-1 overflow-x-auto lg:flex" aria-label="Main">
@@ -135,7 +138,8 @@ export function Header() {
             </NavLink>
           ))}
         </nav>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          <XLink className="btn btn-ghost hidden !min-h-11 !px-3 sm:inline-flex" />
           <ThemeToggle />
           <NotificationBell />
           <ConnectKitButton.Custom>
@@ -143,20 +147,21 @@ export function Header() {
               isConnected && address ? (
                 <AccountMenu address={address} />
               ) : (
-                <button className="btn btn-primary" onClick={show}>
-                  Connect Wallet
+                <button className="btn btn-primary !px-3.5 sm:!px-5" onClick={show}>
+                  Connect<span className="hidden sm:inline">&nbsp;Wallet</span>
                 </button>
               )
             }
           </ConnectKitButton.Custom>
         </div>
       </div>
-      <nav className="no-scrollbar flex gap-1 overflow-x-auto px-3 pb-2.5 lg:hidden" aria-label="Main">
+      <nav className="grid grid-cols-[repeat(4,auto)_2.75rem] items-center gap-1 px-3 pb-2.5 sm:flex sm:justify-center lg:hidden" aria-label="Main">
         {NAV.map((n) => (
-          <NavLink key={n.to} to={n.to} end={n.end} className={navClass}>
-            {n.label}
+          <NavLink key={n.to} to={n.to} end={n.end} className={(st) => `${navClass(st)} text-center !px-2 sm:!px-3.5`}>
+            {n.short}
           </NavLink>
         ))}
+        <XLink className="flex size-10 items-center justify-center rounded-lg border-2 border-[var(--line)] bg-[var(--surface)] sm:hidden" />
       </nav>
     </header>
   )

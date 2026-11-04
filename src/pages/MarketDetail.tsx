@@ -71,13 +71,13 @@ export default function MarketDetail() {
         <ArrowLeft className="size-4" /> Explore
       </Link>
 
-      <header className="glass space-y-4 rounded-3xl p-5">
-        <div className="flex flex-wrap items-start gap-4">
-          <ProjectLogo name={p?.name ?? '?'} url={p?.logo_url} size="size-16" />
+      <header className="glass space-y-4 rounded-3xl p-4 sm:p-5">
+        <div className="flex items-start gap-3 sm:gap-4">
+          <ProjectLogo name={p?.name ?? '?'} url={p?.logo_url} size="size-12 sm:size-16" />
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="display text-3xl font-bold">{p?.name}</h1>
-              <span className="mono text-lg text-[var(--ink-2)]">{p?.token_symbol}</span>
+              <h1 className="display min-w-0 break-words text-2xl font-bold leading-tight sm:text-3xl">{p?.name}</h1>
+              <span className="mono text-base text-[var(--ink-2)] sm:text-lg">{p?.token_symbol}</span>
               <StatusChip status={m.status} />
             </div>
             <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -130,7 +130,7 @@ export default function MarketDetail() {
             </div>
           )}
           {tab === 'About' && p && (
-            <div className="glass space-y-4 rounded-3xl p-5 text-sm">
+            <div className="glass space-y-4 rounded-3xl p-4 sm:p-5 text-sm">
               <p className="whitespace-pre-line text-pretty text-[var(--muted)]">{p.description || 'No description provided.'}</p>
               <dl className="grid gap-3 sm:grid-cols-2">
                 <div>
@@ -173,7 +173,7 @@ export default function MarketDetail() {
             </div>
           )}
           {tab === 'Rules' && (
-            <div className="glass space-y-4 rounded-3xl p-5 text-sm text-[var(--ink-2)]">
+            <div className="glass space-y-4 rounded-3xl p-4 sm:p-5 text-sm text-[var(--ink-2)]">
               <h3 className="display text-lg font-semibold">How this market works</h3>
               <ul className="list-disc space-y-2 pl-5 text-pretty">
                 <li>Orders are on-chain. Placing an order locks USDC: buyers lock payment plus a 0.5% fee reserve, sellers lock collateral equal to the trade value.</li>
@@ -207,7 +207,7 @@ export default function MarketDetail() {
             </div>
           )}
           {address && (
-            <div className="glass rounded-3xl p-5">
+            <div className="glass rounded-3xl p-4 sm:p-5">
               <h3 className="display mb-3 text-lg font-semibold">Your open orders</h3>
               <MyOrdersTable orders={myOpen} market={m} empty="You have no open orders in this market." />
             </div>

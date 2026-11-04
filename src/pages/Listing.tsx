@@ -225,7 +225,7 @@ export function SubmitProject() {
         {auth.signedIn && (
           <div className="space-y-6">
             <MyApplications onEdit={load} />
-            <section className="glass space-y-5 rounded-3xl p-5 sm:p-6">
+            <section className="glass space-y-5 rounded-3xl p-4 sm:p-5 sm:p-6">
               <h2 className="display text-xl font-semibold">{editing ? `Editing application #${editing}` : 'New application'}</h2>
               <div className="grid gap-4 sm:grid-cols-2">
                 {inp('name', 'Project name', { max: 120 })}
@@ -308,7 +308,7 @@ export function RequestListing() {
           </div>
         ) : (
           <div className="grid gap-6 lg:grid-cols-[1fr_20rem]">
-            <section className="glass space-y-4 rounded-3xl p-5 sm:p-6">
+            <section className="glass space-y-4 rounded-3xl p-4 sm:p-5 sm:p-6">
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field label="Project name" htmlFor="pn">
                   <input id="pn" className="field" maxLength={120} value={f.project_name} onChange={(e) => setF({ ...f, project_name: e.target.value })} />

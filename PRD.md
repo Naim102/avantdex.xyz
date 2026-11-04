@@ -426,7 +426,7 @@ Acceptance: AC-REQ-1 a request does not appear in `/markets`; AC-REQ-2 only admi
 
 | ID | Requirement | Priority |
 |---|---|---|
-| VERIFY-001 | Badges are granted only by `verification_admin` or `super_admin`, each with evidence notes and an optional expiry. | M |
+| VERIFY-001 | Badges are granted only by admins, each with evidence notes and an optional expiry. | M |
 | VERIFY-002 | Each badge shows an explanation popover with the table above. | M |
 | VERIFY-003 | A visible disclaimer states that no badge implies investment safety, profitability or guaranteed token delivery. | M |
 | VERIFY-004 | Badge grant/revoke is audit-logged and shows date and verifier role (not personal data). | M |

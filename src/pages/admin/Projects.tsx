@@ -35,10 +35,12 @@ export interface AdminProject {
 }
 
 const NEXT: Record<string, string[]> = {
-  Submitted: ['Under Review', 'Rejected'],
-  'Under Review': ['Verification', 'Changes Requested', 'Rejected'],
+  Submitted: ['Approved', 'Under Review', 'Changes Requested', 'Rejected'],
+  'Under Review': ['Approved', 'Verification', 'Changes Requested', 'Rejected'],
   Verification: ['Approved', 'Changes Requested', 'Rejected'],
-  Approved: ['Market Setup', 'Rejected'],
+  'Changes Requested': ['Approved', 'Under Review', 'Rejected'],
+  Rejected: ['Approved', 'Under Review'],
+  Approved: ['Market Setup', 'Under Review', 'Rejected'],
   'Market Setup': ['Approved'],
   Live: ['Delisted'],
   Suspended: ['Delisted'],
@@ -70,7 +72,7 @@ function ProjectDetail({ p, onClose, showBadges }: { p: AdminProject; onClose: (
       setState({ busy: false, error: e instanceof Error ? e.message : 'Failed' })
     }
   }
-  const canBadge = auth.roles.includes('verification_admin') || auth.roles.includes('super_admin')
+  const canBadge = auth.roles.length > 0
   return (
     <Modal open onClose={onClose} title={`${p.name} (${p.token_symbol})`}>
       <div className="max-h-[70vh] space-y-4 overflow-y-auto pr-1 text-sm">
@@ -104,12 +106,12 @@ function ProjectDetail({ p, onClose, showBadges }: { p: AdminProject; onClose: (
             <input className="field" placeholder="Reason (required for reject / changes requested / delist)" value={reason} onChange={(e) => setReason(e.target.value)} />
             <div className="flex flex-wrap gap-2">
               {NEXT[p.status].map((to) => (
-                <button key={to} className={`btn ${to === 'Rejected' || to === 'Delisted' ? 'btn-danger' : 'btn-ghost'} !min-h-9`} disabled={state.busy || (NEEDS_REASON.includes(to) && !reason.trim())} onClick={() => void act(() => api.post(`/admin/projects/${p.id}/transition`, { to, reason }).then(() => setReason('')))}>
+                <button key={to} className={`btn ${to === 'Rejected' || to === 'Delisted' ? 'btn-danger' : to === 'Approved' ? 'btn-primary' : 'btn-ghost'} !min-h-9`} disabled={state.busy || (NEEDS_REASON.includes(to) && !reason.trim())} onClick={() => void act(() => api.post(`/admin/projects/${p.id}/transition`, { to, reason }).then(() => setReason('')))}>
                   {to}
                 </button>
               ))}
             </div>
-            <p className="text-xs text-[var(--subtle)]">Allowed roles per step: reviewers move Submitted → Verification; verification admins approve; market managers set up markets. The server enforces this.</p>
+            <p className="text-xs text-[var(--subtle)]">Approving lists the project as Coming soon on the site. Trading starts only after a market is created on-chain and activated.</p>
           </div>
         )}
         {showBadges && (
@@ -139,7 +141,7 @@ function ProjectDetail({ p, onClose, showBadges }: { p: AdminProject; onClose: (
                 <p className="text-xs text-[var(--subtle)]">{BADGE_INFO[badge]?.means} {BADGE_INFO[badge]?.not}</p>
               </>
             ) : (
-              <p className="text-xs text-[var(--subtle)]">Only verification admins can grant or revoke badges.</p>
+              <p className="text-xs text-[var(--subtle)]">Only admins can grant or revoke badges.</p>
             )}
           </div>
         )}

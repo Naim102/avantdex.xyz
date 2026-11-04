@@ -1,4 +1,5 @@
-import { NavLink, Outlet } from 'react-router-dom'
+import { useEffect } from 'react'
+import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { Notice, PageTitle, WalletGate } from '@/components/ui'
 import { useAuth } from '@/hooks/useApp'
 
@@ -12,13 +13,18 @@ export const ADMIN_SECTIONS = [
   { to: '/admin/settlement', label: 'Settlement Management' },
   { to: '/admin/disputes', label: 'Disputes' },
   { to: '/admin/users', label: 'Users' },
-  { to: '/admin/roles', label: 'Admin Roles' },
+  { to: '/admin/roles', label: 'Admins' },
   { to: '/admin/audit-logs', label: 'Audit Logs' },
   { to: '/admin/settings', label: 'Settings' },
 ]
 
 export default function AdminLayout() {
   const auth = useAuth()
+  const { pathname } = useLocation()
+  useEffect(() => {
+    // on phones the section bar scrolls sideways: keep the current section in view
+    document.querySelector('nav[aria-label="Admin sections"] [aria-current="page"]')?.scrollIntoView({ inline: 'center', block: 'nearest' })
+  }, [pathname])
   return (
     <div className="space-y-6">
       <PageTitle title="Admin" subtitle="Restricted area. Every action is role-checked on the server and written to the audit log. Admins cannot move users' escrowed funds." />

@@ -41,7 +41,7 @@ interface Summary {
 
 function Card({ label, value, sub, color }: { label: string; value: string; sub?: string; color?: string }) {
   return (
-    <div className="glass rounded-3xl p-5" style={color ? { background: color, color: '#262627' } : undefined}>
+    <div className="glass rounded-3xl p-4 sm:p-5" style={color ? { background: color, color: '#262627' } : undefined}>
       <div className="label" style={color ? { color: '#262627' } : undefined}>{label}</div>
       <div className="display text-3xl tabular-nums">{value}</div>
       {sub && <div className="mt-1 text-xs font-semibold opacity-80">{sub}</div>}
@@ -286,7 +286,7 @@ export default function Portfolio() {
                   <Card label="Claimable" value={fmtUsdc(claimable)} sub="USDC that could not be sent automatically" color={claimable > 0n ? "#FF9C8F" : undefined} />
                 </div>
                 {claimable > 0n && (
-                  <div className="glass space-y-3 rounded-3xl p-5">
+                  <div className="glass space-y-3 rounded-3xl p-4 sm:p-5">
                     <Notice tone="warn">{fmtUsdc(claimable, 4)} USDC is waiting for you. A transfer to your wallet was refused (for example while an address is blocklisted). Withdraw it here.</Notice>
                     <button className="btn btn-primary" disabled={tx.busy} onClick={() => void tx.run('Withdraw claimable USDC', { address: cfg.exchange_address, abi: exchangeAbi, functionName: 'withdrawClaimable' })}>
                       {tx.busy ? <Spinner /> : 'Withdraw claimable USDC'}

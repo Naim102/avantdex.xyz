@@ -32,7 +32,7 @@ export function MarketCard({ m }: { m: Market }) {
   const s = m.stats
   const dash = '—'
   return (
-    <article className="glass flex flex-col gap-4 rounded-3xl p-5 transition-all duration-100 hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[7px_7px_0_var(--line)]">
+    <article className="glass flex flex-col gap-4 rounded-3xl p-4 sm:p-5 transition-all duration-100 hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[7px_7px_0_var(--line)]">
       <Link to={`/market/${key}`} className="flex items-start gap-3">
         <ProjectLogo name={p?.name ?? '?'} url={p?.logo_url} />
         <div className="min-w-0 flex-1">

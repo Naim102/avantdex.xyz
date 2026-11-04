@@ -79,6 +79,7 @@
 
 html {
   scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
@@ -90,6 +91,7 @@ body {
   background-image: radial-gradient(var(--grid) 1.2px, transparent 1.2px);
   background-size: 24px 24px;
   -webkit-font-smoothing: antialiased;
+  overflow-x: clip; /* safety net: nothing may create sideways scrolling */
 }
 
 ::selection {
@@ -104,6 +106,7 @@ body {
 }
 .mono {
   font-family: 'JetBrains Mono', Menlo, monospace;
+  overflow-wrap: anywhere; /* long addresses and hashes wrap instead of widening the page */
 }
 
 @layer components {
@@ -243,6 +246,12 @@ body {
     -webkit-box-decoration-break: clone;
   }
 
+  /* Grids default to ONE shrinkable column. Without this, an auto-sized column grows to its widest unbreakable
+     child (a long token name, an address) and pushes the whole page wider than a phone screen. */
+  .grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   /* table rows */
   .row-hover:hover {
     background: var(--tint);
@@ -254,6 +263,18 @@ body {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+}
+
+/* the Arc Studio badge must not cover buttons on phones */
+@media (max-width: 639px) {
+  .studio-watermark {
+    bottom: 8px !important;
+    right: 8px !important;
+    padding: 3px 8px !important;
+    font-size: 10px !important;
+    box-shadow: none !important;
+    opacity: 0.9;
   }
 }
 

@@ -35,7 +35,7 @@ Create a **Docker Compose** resource from this repo (branch `main`, file `docker
 
 **Existing PostgreSQL (for example a Coolify database resource):** use `docker-compose.external-db.yml` as the compose file (its api and indexer join Coolify's shared `coolify` network, so the database's internal host name resolves; set `COOLIFY_NETWORK` if your server names it differently), and set `DATABASE_URL=postgresql+psycopg://user:password@host:5432/dbname`. Tables are created automatically by Alembic when the API starts.
 
-**Admin accounts from the environment:** `BOOTSTRAP_ADMIN_ADDRESSES` (super admins) and `ADMIN_ROLES` (`wallet:role|role,wallet:role`). Roles: `super_admin`, `project_reviewer`, `verification_admin`, `market_manager`, `settlement_manager`, `support_admin`. Change the variable and redeploy; roles added from the environment are removed again if you delete them from it, roles granted inside the dashboard are never touched, and the last super admin is always kept. These are dashboard roles only; the on-chain roles (create/activate markets, pause, change fee collector) belong to the wallet that deployed the contract.
+**Admin accounts from the environment:** `BOOTSTRAP_ADMIN_ADDRESSES` and `ADMIN_ROLES` (`wallet:super_admin,wallet:super_admin`). There is **one admin level**: every admin can review, approve, list and manage markets (older split role names in `ADMIN_ROLES` are treated as admin). Change the variable and redeploy; admins added from the environment are removed again if you delete them from it, admins added inside the dashboard are never touched, and the last admin is always kept. Dashboard admin is off-chain; creating/activating/suspending/settling a market is an on-chain transaction that needs the `MARKET_MANAGER` contract role on the signing wallet. The contract's `DEFAULT_ADMIN` wallet can grant it from **Admin -> Admins -> On-chain access**.
 
 **Fee collector:** set `FEE_COLLECTOR` before running the deploy script; afterwards change it from Admin -> Settings (on-chain transaction by the contract's admin wallet).
 
@@ -44,7 +44,7 @@ After changing frontend code: `bun run build:static`, commit `deploy/dist`, rede
 ## 4. First market (all from the admin dashboard, `/admin`)
 
 1. A project owner opens **Create Listing → Submit Your Project**, fills the form and submits (they sign in with their wallet; the team wallet must be the signing wallet).
-2. Admin: **Applications** → *Under Review* → *Verification*; **Verification** → grant badges with evidence → *Approved*.
+2. Admin: **Applications** → open the project → **Approved** (one click; *Under Review* / *Verification* and badges are optional). Approved projects appear on Home and Explore as **Coming soon** (not tradable).
 3. **Approved Projects** → *Configure market* (lot size, tick size, limits, trading window).
 4. **Market Management** → *Manage* → **Create on-chain** (your manager wallet signs) → **Verify configuration** → **Activate**.
 5. Traders use **Buy / Sell** on the market page. Approve USDC, place orders, see the order book and portfolio update.

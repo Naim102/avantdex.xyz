@@ -416,7 +416,7 @@ On-chain roles (OpenZeppelin `AccessControl`):
 | `MARKET_MANAGER_ROLE` | Create, activate, suspend, resume, cancel markets; set token + open settlement; bounded extension; complete market | Move funds; alter existing orders/trades |
 | `PAUSER_ROLE` | Pause/unpause new orders | Block cancels, settlement, refunds |
 
-Off-chain (backend) roles, stored in PostgreSQL and enforced by the API: `super_admin`, `project_reviewer`, `verification_admin`, `market_manager`, `settlement_manager`, `support_admin`. Every admin action is written to `audit_logs` (actor wallet, action, entity, before/after JSON, timestamp). Admin authentication is Sign-In-With-Ethereum style wallet signature + role lookup; sessions are short-lived.
+Off-chain (backend) admin access, stored in PostgreSQL and enforced by the API: a single admin level (`super_admin`); every admin can perform every dashboard action. The earlier split roles (`project_reviewer`, `verification_admin`, `market_manager`, `settlement_manager`, `support_admin`) still parse and are treated as admin. Every admin action is written to `audit_logs` (actor wallet, action, entity, before/after JSON, timestamp). Admin authentication is Sign-In-With-Ethereum style wallet signature + role lookup; sessions are short-lived.
 
 Recommendations (not yet implemented in the MVP deployment):
 

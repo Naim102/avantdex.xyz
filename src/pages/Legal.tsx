@@ -46,7 +46,7 @@ export default function Legal() {
         ))}
         {page === 'rules' && cfg && (
           <p>
-            Platform fees: 0.5% buyer and 0.5% seller on successful (settled) trades only, paid to <span className="mono">{cfg.fee_collector}</span>. Order cancellations, project listings, listing requests and failed transactions carry no platform fee.
+            Platform fees: 0.5% buyer and 0.5% seller on successful (settled) trades only, paid to <span className="mono break-all">{cfg.fee_collector}</span>. Order cancellations, project listings, listing requests and failed transactions carry no platform fee.
           </p>
         )}
       </div>

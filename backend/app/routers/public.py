@@ -223,6 +223,20 @@ def list_markets(
     return {"items": items, "count": len(items)}
 
 
+@router.get("/projects/upcoming")
+def upcoming_projects(db: Session = Depends(get_db)) -> dict:
+    """Approved projects whose market is not trading yet (shown as 'Coming soon'; nothing can be traded on them)."""
+    rows = db.scalars(
+        select(Project).options(joinedload(Project.badges)).where(Project.status.in_(("Approved", "Market Setup"))).order_by(Project.updated_at.desc()).limit(100)
+    ).unique()
+    items = []
+    for p in rows:
+        d = project_public(p)
+        d["status"] = p.status
+        items.append(d)
+    return {"items": items}
+
+
 @router.get("/markets/{key}")
 def get_market(key: str, db: Session = Depends(get_db)) -> dict:
     m = find_market(db, key)

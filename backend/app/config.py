@@ -35,8 +35,8 @@ class Settings(BaseSettings):
     auth_uri: str = "http://localhost"
     # Comma separated wallet addresses that receive the super_admin role on startup.
     bootstrap_admin_addresses: str = ""
-    # Extra admins with specific roles, set from the environment. Format (comma between wallets, | between roles):
-    #   ADMIN_ROLES=0xAAAA…:super_admin,0xBBBB…:project_reviewer|verification_admin
+    # Extra admins set from the environment. One admin level: any role name means admin (use super_admin).
+    #   ADMIN_ROLES=0xAAAA…:super_admin,0xBBBB…:super_admin
     admin_roles: str = ""
     require_two_person_approval: bool = False
 

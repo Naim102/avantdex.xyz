@@ -31,7 +31,8 @@ def bootstrap_admins() -> None:
     removes it at the next start. Roles granted from the dashboard are never touched. The last super_admin is
     never removed, so a mistake in the environment cannot lock everyone out.
     """
-    wanted = {a: roles for a, roles in get_settings().env_admin_roles.items() if ADDRESS_RE.match(a)}
+    # Every role name in the environment means "admin": split roles are folded into super_admin.
+    wanted = {a: {"super_admin"} for a, roles in get_settings().env_admin_roles.items() if ADDRESS_RE.match(a) and roles}
     valid = set(ROLES)
     with SessionLocal() as db:
         for addr, roles in wanted.items():

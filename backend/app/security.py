@@ -19,14 +19,10 @@ from .config import get_settings
 from .db import get_db
 from .models import AdminRole, AuditLog, AuthNonce, User, utcnow
 
-ROLES = (
-    "super_admin",
-    "project_reviewer",
-    "verification_admin",
-    "market_manager",
-    "settlement_manager",
-    "support_admin",
-)
+# One admin level: every admin can do every dashboard action. The older split roles still parse (existing
+# rows and ADMIN_ROLES entries keep working) and are treated exactly like super_admin.
+ROLES = ("super_admin",)
+LEGACY_ROLES = ("project_reviewer", "verification_admin", "market_manager", "settlement_manager", "support_admin")
 ADDRESS_RE = re.compile(r"^0x[0-9a-fA-F]{40}$")
 
 
@@ -119,7 +115,7 @@ class Session_:
         self.roles = roles
 
     def has_any(self, *roles: str) -> bool:
-        return "super_admin" in self.roles or any(r in self.roles for r in roles)
+        return bool(self.roles)  # any admin may do anything in the dashboard
 
 
 def _decode(request: Request) -> str | None:
@@ -146,7 +142,7 @@ def optional_user(request: Request, db: Session = Depends(get_db)) -> Session_ |
 
 
 def require_roles(*roles: str):
-    """Dependency: the caller must hold at least one of `roles` (super_admin always passes)."""
+    """Dependency: the caller must be an admin (all admin roles are equivalent)."""
 
     def dep(user: Session_ = Depends(current_user)) -> Session_:
         if not user.roles:

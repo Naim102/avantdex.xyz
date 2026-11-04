@@ -1,5 +1,7 @@
 # Avantdex
 
+Follow us on X: [@AvantDex](https://x.com/AvantDex)
+
 Pre-market trading on **Arc Network**. Users trade tokens that have not launched yet through an on-chain order book, settled in USDC with escrow. After the token launch the seller delivers the token **atomically** (token and payment move in one transaction); if they do not, the buyer receives their payment plus the seller's collateral.
 
 > **Status: Arc Testnet only. Unaudited.** Do not use with real value. See [docs/RUNBOOK.md](docs/RUNBOOK.md) to deploy and [PRD.md](PRD.md) / [R&D.md](R&D.md) for the full product and research documents.

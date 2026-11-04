@@ -80,8 +80,8 @@ export function PageTitle({ title, subtitle, right }: { title: string; subtitle?
   return (
     <div className="flex flex-wrap items-end justify-between gap-3">
       <div>
-        <h1 className="display text-3xl uppercase sm:text-5xl">{title}</h1>
-        {subtitle && <p className="mt-2 max-w-2xl text-pretty font-medium text-[var(--muted)]">{subtitle}</p>}
+        <h1 className="display text-balance break-words text-[1.75rem] uppercase leading-none sm:text-5xl">{title}</h1>
+        {subtitle && <p className="mt-2 max-w-2xl text-pretty text-sm font-medium text-[var(--muted)] sm:text-base">{subtitle}</p>}
       </div>
       {right}
     </div>
@@ -116,7 +116,7 @@ export function Modal({ open, onClose, title, children }: { open: boolean; onClo
   if (!open) return null
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-[rgba(38,38,39,0.65)] p-4 sm:items-center" role="dialog" aria-modal="true" aria-label={title} onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="glass w-full max-w-lg rounded-3xl p-5">
+      <div className="glass w-full max-w-lg rounded-3xl p-4 sm:p-5">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="display text-xl">{title}</h2>
           <button onClick={onClose} aria-label="Close" className="rounded-lg border-2 border-[var(--line)] p-1 hover:bg-[var(--tint-2)]">
@@ -258,29 +258,50 @@ export function useTicker(ms = 1000): number {
 export function DataTable({ head, rows, empty }: { head: string[]; rows: ReactNode[][]; empty?: string }) {
   if (!rows.length) return <p className="py-6 text-center text-sm text-[var(--subtle)]">{empty ?? 'Nothing here yet.'}</p>
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[34rem] text-left text-sm">
-        <thead>
-          <tr className="border-b-2 border-[var(--line)] text-xs uppercase tracking-wide text-[var(--muted)]">
-            {head.map((h) => (
-              <th key={h} className="px-3 py-2 font-semibold">
-                {h}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-[var(--hair)]">
-          {rows.map((r, i) => (
-            <tr key={i} className="row-hover align-top">
-              {r.map((c, j) => (
-                <td key={j} className="px-3 py-2.5">
+    <>
+      {/* phones: one compact card per row (label on the left, value on the right) */}
+      <div className="space-y-2.5 sm:hidden">
+        {rows.map((r, i) => (
+          <div key={i} className="glass-inner space-y-1.5 rounded-2xl p-3 text-sm">
+            {r.map((c, j) =>
+              head[j] ? (
+                <div key={j} className="flex items-start justify-between gap-3">
+                  <span className="shrink-0 pt-0.5 text-[11px] font-bold uppercase tracking-wide text-[var(--muted)]">{head[j]}</span>
+                  <span className="min-w-0 break-words text-right font-medium">{c}</span>
+                </div>
+              ) : (
+                <div key={j} className="flex flex-wrap justify-end gap-2 pt-1 empty:hidden">
                   {c}
-                </td>
+                </div>
+              ),
+            )}
+          </div>
+        ))}
+      </div>
+      <div className="hidden overflow-x-auto sm:block">
+        <table className="w-full min-w-[34rem] text-left text-sm">
+          <thead>
+            <tr className="border-b-2 border-[var(--line)] text-xs uppercase tracking-wide text-[var(--muted)]">
+              {head.map((h, k) => (
+                <th key={`${h}${k}`} className="px-3 py-2 font-semibold">
+                  {h}
+                </th>
               ))}
             </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+          </thead>
+          <tbody className="divide-y divide-[var(--hair)]">
+            {rows.map((r, i) => (
+              <tr key={i} className="row-hover align-top">
+                {r.map((c, j) => (
+                  <td key={j} className="px-3 py-2.5">
+                    {c}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
   )
 }

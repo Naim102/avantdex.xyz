@@ -2,6 +2,7 @@ import { useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { MarketCard } from '@/components/MarketCard'
 import { EmptyState, PageTitle, Skeleton, Tabs } from '@/components/ui'
+import { UpcomingSection } from '@/components/UpcomingSection'
 import { api, qs, type Market } from '@/lib/api'
 import { useConfig } from '@/hooks/useApp'
 
@@ -45,8 +46,8 @@ export default function Explore() {
     <div className="space-y-6">
       <PageTitle title="Explore Markets" subtitle="Every market is read from the Avantdex exchange contract on Arc Testnet. Fields without data show a dash, never an invented number." />
       <Tabs label="Market views" tabs={TABS} value={tab} onChange={(t) => set('tab', TAB_KEY[t] === 'all' ? '' : TAB_KEY[t])} />
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-        <input className="field lg:col-span-2" placeholder="Search name or symbol" aria-label="Search" value={q} onChange={(e) => set('q', e.target.value)} maxLength={60} />
+      <div className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-5">
+        <input className="field col-span-2" placeholder="Search name or symbol" aria-label="Search" value={q} onChange={(e) => set('q', e.target.value)} maxLength={60} />
         <select className="field" aria-label="Category" value={category} onChange={(e) => set('category', e.target.value)}>
           <option value="">All categories</option>
           {(cfg?.categories ?? []).map((c) => (
@@ -103,6 +104,7 @@ export default function Explore() {
           </div>
         </>
       )}
+      {(tab === 'All Markets' || tab === 'New Listings') && !filtered && <UpcomingSection />}
     </div>
   )
 }

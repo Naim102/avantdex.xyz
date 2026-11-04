@@ -26,6 +26,10 @@ Buyer 0.5% and seller 0.5% on **settled** trades only; 0% for order cancellation
 - Demo ERC-20 for settlement practice: `0x9B4aDa076774DE9575797cae424e0192a1cB6E34` (open mint, worthless).
 - Mainnet is NOT deployed. For mainnet the owner deploys with their own wallet and changes `CHAIN_ID`, `RPC_URL`, `EXPLORER_URL`, `USDC_ADDRESS`, `EXCHANGE_ADDRESS`, `EXCHANGE_DEPLOY_BLOCK` and the wagmi chain in `src/config.ts` (and must get an audit first).
 
+## Admin model
+
+One admin level: any wallet with an admin row (`BOOTSTRAP_ADMIN_ADDRESSES` / `ADMIN_ROLES` / dashboard) can do everything in `/admin`. Old split role names are accepted and treated as admin. Approved projects show publicly as "Coming soon" (`GET /api/projects/upcoming`); trading starts only after the on-chain market is created and activated by a wallet holding the on-chain `MARKET_MANAGER` role. Official X account: https://x.com/AvantDex.
+
 ## Rules that must not break
 
 - No role can withdraw or redirect escrowed funds. Users always keep cancel / settle / default claim / refund paths. Pause blocks only new orders.
