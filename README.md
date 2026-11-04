@@ -55,6 +55,10 @@ bun run dev                                             # frontend on http://loc
 
 Use a browser wallet pointed at `http://localhost:8545` (chain id 5042002) and import one of anvil's public dev accounts (account 0 is the admin: `0xf39F…2266`). Contract roles and the dashboard `super_admin` belong to account 0.
 
+## Interface
+
+Five themes (Paper, Sky, Mint, Ink, Terminal), picked from the Theme menu in the header and remembered per browser. All use the brand green `#28DF99` and black `#262627`; Archivo for text, IBM Plex Mono for every figure. The home page shows a live platform ledger and a market board (last price, best bid/ask, 24h volume, open interest, buy-side vs sell-side liquidity); a market page adds a depth chart. `scripts/seed_demo_markets.py` fills a testnet deployment with labelled demo markets.
+
 ## Tests
 
 ```bash

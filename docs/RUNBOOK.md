@@ -53,6 +53,16 @@ After changing frontend code: `bun run build:static`, commit `deploy/dist`, rede
 
 To practise settlement, use the `--demo-token` address as the project token: mint it to the seller wallet and approve it (the demo token has an open `mint`).
 
+## Demo markets (so the board, bids, asks, volume and depth chart have something to show)
+
+`scripts/seed_demo_markets.py` creates up to four clearly labelled "Demo ..." projects through the real API, creates and activates their markets on-chain and places real orders and one small trade in each (the "tokens" are the worthless open-mint demo ERC-20; the exchange only supports ERC-20, there is no NFT market). It needs an **admin wallet of the dashboard that also holds the on-chain `MARKET_MANAGER` role**, and a second wallet for the buy side. Each market costs about 5 USDC of testnet USDC, locked in resting orders you can cancel back.
+
+```bash
+docker run --rm --env-file .env -e API_URL=https://your-domain -e ADMIN_PRIVATE_KEY=$DEPLOYER_PRIVATE_KEY -e DEMO_TOKEN_ADDRESS=$DEMO_TOKEN_ADDRESS -v "$PWD:/repo" -w /repo avantdex-backend-dev python scripts/seed_demo_markets.py
+```
+
+Run it only against a testnet deployment. Re-running skips projects that already exist.
+
 ## Testnet end-to-end check (real chain, real USDC)
 
 With the stack running against Arc Testnet (API on `http://localhost:8000`) and `.env` holding `DEPLOYER_PRIVATE_KEY`, `TRADER_PRIVATE_KEY`, `EXCHANGE_ADDRESS`, `DEMO_TOKEN_ADDRESS`:

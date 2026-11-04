@@ -197,7 +197,7 @@ export function Roles() {
         {err && <Notice tone="error">{err}</Notice>}
         <DataTable head={['Wallet', 'On-chain', 'Added by', '']} rows={(data?.items ?? []).map((r) => [
           <span key="a" className="mono break-all text-xs">{r.address}</span>,
-          r.onchain ? <span key="o" className="text-xs">{Object.entries(r.onchain).filter(([, v]) => v).map(([k]) => k.replace('_ROLE', '')).join(', ') || 'none'}</span> : '—',
+          r.onchain ? <span key="o" className="text-xs">{Object.entries(r.onchain).filter(([, v]) => v).map(([k]) => k.replace('_ROLE', '')).join(', ') || 'none'}</span> : '–',
           shortAddr(r.granted_by), <button key="d" className="btn btn-danger !min-h-8 !px-3 !py-1 text-xs" onClick={() => void api.del(`/admin/roles/${r.id}`).then(refresh).catch((e: Error) => setErr(e.message))}>Remove</button>,
         ])} />
       </div>

@@ -133,7 +133,10 @@ def test_stats_use_only_real_trades(client):
         seed_market(db, 1, "Alpha Net", "ALP")
         db.commit()
     s = client.get("/api/markets/1/stats").json()
-    assert s == {"last_price": None, "best_bid": None, "best_ask": None, "volume_24h": "0", "volume_total": "0", "open_interest": "0"}
+    assert s == {
+        "last_price": None, "best_bid": None, "best_ask": None, "volume_24h": "0", "volume_total": "0", "open_interest": "0",
+        "bid_depth": "0", "ask_depth": "0", "open_orders": 0, "trades": 0,
+    }
     with SessionLocal() as db:
         trade(db, 1, 1, 2 * ONE, 10, hours_ago=30)  # older than 24h
         trade(db, 2, 1, 3 * ONE, 4, status="Settled", hours_ago=1)
@@ -166,3 +169,22 @@ def test_portfolio_display_statuses_and_validation(client):
 def test_unknown_market_404(client):
     assert client.get("/api/markets/999").status_code == 404
     assert client.get("/api/markets/999/orderbook").status_code == 404
+
+
+def test_depth_and_platform_stats_come_from_indexed_rows(client):
+    with SessionLocal() as db:
+        seed_market(db, 1, "Alpha Net", "ALP")
+        order(db, 1, 1, "buy", 2 * ONE, 10)           # bid depth 20 USDC
+        order(db, 2, 1, "buy", 1 * ONE, 4, filled=2)  # remaining 2 lots at 1 USDC = 2 USDC
+        order(db, 3, 1, "sell", 3 * ONE, 5)           # ask depth 15 USDC
+        order(db, 4, 1, "sell", 3 * ONE, 5, expiry_days=-1)  # expired: not counted
+        trade(db, 1, 1, 2 * ONE, 3, status="Settled")
+        trade(db, 2, 1, 2 * ONE, 4, status="Open", hours_ago=30)
+        db.commit()
+    s = client.get("/api/markets").json()["items"][0]["stats"]
+    assert (s["bid_depth"], s["ask_depth"], s["open_orders"], s["trades"]) == (str(22 * ONE), str(15 * ONE), 3, 2)
+    g = client.get("/api/stats").json()
+    assert g["markets_live"] == 1 and g["open_orders"] == 3 and g["trades_total"] == 2 and g["trades_settled"] == 1
+    assert g["volume_total"] == str(14 * ONE) and g["volume_24h"] == str(6 * ONE) and g["open_interest"] == str(8 * ONE)
+    assert g["bid_depth"] == str(22 * ONE) and g["ask_depth"] == str(15 * ONE)
+    assert g["fees_paid"] == str(6 * ONE * 100 // 10000)  # 0.5% + 0.5% of the one settled trade

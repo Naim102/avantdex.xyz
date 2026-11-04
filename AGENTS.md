@@ -30,6 +30,10 @@ Buyer 0.5% and seller 0.5% on **settled** trades only; 0% for order cancellation
 
 One admin level: any wallet with an admin row (`BOOTSTRAP_ADMIN_ADDRESSES` / `ADMIN_ROLES` / dashboard) can do everything in `/admin`. Old split role names are accepted and treated as admin. Approved projects show publicly as "Coming soon" (`GET /api/projects/upcoming`); trading starts only after the on-chain market is created and activated by a wallet holding the on-chain `MARKET_MANAGER` role. Official X account: https://x.com/AvantDex.
 
+## Design
+
+Themes live in `src/index.css` (`data-theme` on `<html>`: paper, sky, mint, ink, terminal) and `src/hooks/useTheme.tsx`. Use the CSS variables (`--ink`, `--surface`, `--accent`, `--accent-ink`, `--line`, `--r-*`), never hard-coded colors, so every theme keeps working. No em dash characters in UI text. Market numbers come from the API (`/api/stats`, per-market `stats`); never invent them. `scripts/seed_demo_markets.py` creates real, clearly labelled demo markets on testnet only.
+
 ## Rules that must not break
 
 - No role can withdraw or redirect escrowed funds. Users always keep cancel / settle / default claim / refund paths. Pause blocks only new orders.

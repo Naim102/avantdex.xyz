@@ -7,7 +7,7 @@ export const txUrl = (hash: string) => buildTxExplorerUrl(CHAIN_ID, hash)
 export const addrUrl = (addr: string) => buildAddressExplorerUrl(CHAIN_ID, addr)
 
 export function timeAgo(iso?: string | null): string {
-  if (!iso) return '—'
+  if (!iso) return '–'
   const diff = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 1000))
   if (diff < 60) return 'just now'
   if (diff < 3600) return `${Math.floor(diff / 60)}m ago`
@@ -16,12 +16,12 @@ export function timeAgo(iso?: string | null): string {
 }
 
 export function fmtDate(iso?: string | null): string {
-  if (!iso) return '—'
+  if (!iso) return '–'
   return new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
 }
 
 export function fmtDay(iso?: string | null): string {
-  if (!iso) return '—'
+  if (!iso) return '–'
   return new Date(iso).toLocaleDateString(undefined, { dateStyle: 'medium' })
 }
 

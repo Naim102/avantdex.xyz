@@ -25,7 +25,7 @@ export function OrderBook({ book, market, myPrices, onPick }: { book?: OrderBook
   const empty = book.asks.length === 0 && book.bids.length === 0
   return (
     <div className="glass overflow-hidden rounded-3xl">
-      <div className="grid grid-cols-3 gap-2 border-b-2 border-[var(--line)] px-3 py-2.5 text-xs font-semibold uppercase tracking-wide text-[var(--subtle)]">
+      <div className="grid grid-cols-3 gap-2 border-b-2 border-[var(--line)] px-3 py-2.5 text-xs font-semibold text-[var(--subtle)]">
         <span>Price (USDC)</span>
         <span className="text-right">Size ({market.project?.token_symbol ?? 'tokens'})</span>
         <span className="text-right">Total</span>
@@ -37,7 +37,7 @@ export function OrderBook({ book, market, myPrices, onPick }: { book?: OrderBook
           <div>{asks.map((l) => <Row key={`a${l.price}`} lv={l} side="ask" max={max} market={market} mine={myPrices.has(l.price)} onPick={onPick} />)}</div>
           <div className="flex items-center justify-between border-y border-[var(--hair)] bg-[var(--tint)] px-3 py-2 text-xs">
             <span className="text-[var(--subtle)]">Spread</span>
-            <span className="tabular-nums font-semibold">{book.spread ? `${fmtPricePerToken(book.spread, market)} USDC` : '—'}</span>
+            <span className="tabular-nums font-semibold">{book.spread ? `${fmtPricePerToken(book.spread, market)} USDC` : '–'}</span>
           </div>
           <div>{book.bids.map((l) => <Row key={`b${l.price}`} lv={l} side="bid" max={max} market={market} mine={myPrices.has(l.price)} onPick={onPick} />)}</div>
         </>

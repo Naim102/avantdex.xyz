@@ -3,11 +3,12 @@ export default {
   content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
   theme: {
     extend: {
-      // Neo-brutalist radii: tighter than the Tailwind defaults so thick borders read as intentional
+      // Radii come from the active theme (Terminal is fully square), so every rounded-* follows it.
       borderRadius: {
-        xl: '0.7rem',
-        '2xl': '0.85rem',
-        '3xl': '1.1rem',
+        lg: 'var(--r-sm)',
+        xl: 'var(--r-md)',
+        '2xl': 'var(--r-md)',
+        '3xl': 'var(--r-card)',
       },
     },
   },

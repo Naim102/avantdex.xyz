@@ -111,6 +111,25 @@ export interface MarketStats {
   volume_24h: string
   volume_total: string
   open_interest: string
+  bid_depth: string
+  ask_depth: string
+  open_orders: number
+  trades: number
+}
+
+export interface PlatformStats {
+  markets_live: number
+  markets_total: number
+  projects_upcoming: number
+  open_orders: number
+  bid_depth: string
+  ask_depth: string
+  volume_24h: string
+  volume_total: string
+  open_interest: string
+  trades_total: number
+  trades_settled: number
+  fees_paid: string
 }
 
 export interface Market {

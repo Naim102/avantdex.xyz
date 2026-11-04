@@ -3,12 +3,12 @@ import { Link, NavLink } from 'react-router-dom'
 import { useAccount, useDisconnect, useSwitchChain } from 'wagmi'
 import { ConnectKitButton } from 'connectkit'
 import { useQuery } from '@tanstack/react-query'
-import { Bell, ChevronDown, Copy, ExternalLink, LogOut, Moon, Sun, TriangleAlert } from 'lucide-react'
+import { Bell, Check, ChevronDown, Copy, ExternalLink, LogOut, TriangleAlert } from 'lucide-react'
 import { toast } from 'sonner'
 import { Logo } from '@/components/Logo'
 import { XLink } from '@/components/XIcon'
 import { CHAIN_ID, useAuth, useConfig, useUsdc } from '@/hooks/useApp'
-import { useTheme } from '@/hooks/useTheme'
+import { THEMES, useTheme } from '@/hooks/useTheme'
 import { api } from '@/lib/api'
 import { addrUrl, shortAddr } from '@/lib/format'
 import { fmtUsdc } from '@/lib/exchange'
@@ -22,15 +22,55 @@ const NAV = [
 
 const navClass = ({ isActive }: { isActive: boolean }) =>
   `whitespace-nowrap rounded-lg border-2 px-3.5 py-1.5 text-sm font-bold transition-colors ${
-    isActive ? 'border-[var(--line)] bg-[var(--accent)] text-[#262627]' : 'border-transparent text-[var(--ink)] hover:border-[var(--line)] hover:bg-[var(--surface)]'
+    isActive ? 'border-[var(--line)] bg-[var(--accent)] text-[var(--accent-ink)]' : 'border-transparent text-[var(--ink)] hover:border-[var(--line)] hover:bg-[var(--surface)]'
   }`
 
-function ThemeToggle() {
-  const { theme, toggle } = useTheme()
+function ThemePicker() {
+  const { theme, setTheme } = useTheme()
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!open) return
+    const onDown = (e: MouseEvent) => ref.current && !ref.current.contains(e.target as Node) && setOpen(false)
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false)
+    document.addEventListener('mousedown', onDown)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onDown)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [open])
+  const current = THEMES.find((t) => t.id === theme) ?? THEMES[0]
   return (
-    <button onClick={toggle} className="btn btn-ghost !min-h-11 !px-3" aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'} title={theme === 'dark' ? 'Light theme' : 'Dark theme'}>
-      {theme === 'dark' ? <Sun className="size-4" /> : <Moon className="size-4" />}
-    </button>
+    <div className="relative" ref={ref}>
+      <button onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-haspopup="menu" className="btn btn-ghost !min-h-11 !gap-2 !px-3" aria-label={`Theme: ${current.name}. Change theme`}>
+        <span className="size-4 rounded-sm border-2 border-[var(--line)]" style={{ background: `linear-gradient(135deg, ${current.swatch[0]} 50%, ${current.swatch[1]} 50%)` }} aria-hidden="true" />
+        <span className="hidden text-sm sm:inline">Theme</span>
+      </button>
+      {open && (
+        <div role="menu" aria-label="Themes" className="glass lift absolute right-0 z-40 mt-3 w-60 p-1.5">
+          {THEMES.map((t) => (
+            <button
+              key={t.id}
+              role="menuitemradio"
+              aria-checked={t.id === theme}
+              onClick={() => {
+                setTheme(t.id)
+                setOpen(false)
+              }}
+              className={`flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-left hover:bg-[var(--tint-2)] ${t.id === theme ? 'bg-[var(--tint-2)]' : ''}`}
+            >
+              <span className="size-7 shrink-0 rounded-sm border-2 border-[var(--line)]" style={{ background: `linear-gradient(135deg, ${t.swatch[0]} 50%, ${t.swatch[1]} 50%)` }} aria-hidden="true" />
+              <span className="min-w-0">
+                <span className="block text-sm font-bold">{t.name}</span>
+                <span className="block text-xs text-[var(--muted)]">{t.note}</span>
+              </span>
+              {t.id === theme && <Check className="ml-auto size-4 shrink-0" aria-hidden="true" />}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -117,7 +157,7 @@ function NotificationBell() {
   return (
     <Link to="/portfolio?tab=Notifications" className="btn btn-ghost relative !min-h-11 !px-3" aria-label={`Notifications${data?.unread ? `, ${data.unread} unread` : ''}`}>
       <Bell className="size-4" />
-      {!!data?.unread && <span className="absolute -right-2 -top-2 rounded-full border-2 border-[var(--line)] bg-[var(--accent)] px-1.5 text-[10px] font-extrabold text-[#262627]">{data.unread}</span>}
+      {!!data?.unread && <span className="absolute -right-2 -top-2 rounded-full border-2 border-[var(--line)] bg-[var(--accent)] px-1.5 text-[10px] font-extrabold text-[var(--accent-ink)]">{data.unread}</span>}
     </Link>
   )
 }
@@ -129,7 +169,7 @@ export function Header() {
         <Link to="/" className="flex items-center gap-2.5" aria-label="Avantdex home">
           <Logo className="size-9 sm:size-10" />
           <span className="display text-lg font-bold uppercase tracking-tight sm:text-xl">Avantdex</span>
-          <span className="chip ml-1 hidden !bg-[var(--warn-bg)] sm:inline-flex">Arc Network</span>
+          <span className="ml-1 hidden text-xs font-bold text-[var(--muted)] sm:inline">Arc Testnet</span>
         </Link>
         <nav className="no-scrollbar hidden gap-1 overflow-x-auto lg:flex" aria-label="Main">
           {NAV.map((n) => (
@@ -140,7 +180,7 @@ export function Header() {
         </nav>
         <div className="flex items-center gap-1.5 sm:gap-2">
           <XLink className="btn btn-ghost hidden !min-h-11 !px-3 sm:inline-flex" />
-          <ThemeToggle />
+          <ThemePicker />
           <NotificationBell />
           <ConnectKitButton.Custom>
             {({ isConnected, show, address }) =>
@@ -181,7 +221,7 @@ export function NetworkBanner() {
   }
   return (
     <>
-      {cfg?.notice && <div className={`${bar} bg-[var(--accent)] text-[#262627]`}>{cfg.notice}</div>}
+      {cfg?.notice && <div className={`${bar} bg-[var(--accent)] text-[var(--accent-ink)]`}>{cfg.notice}</div>}
       {isConnected && chainId !== CHAIN_ID && (
         <div className={`${bar} flex flex-wrap items-center justify-center gap-3 bg-[var(--warn-bg)] text-[var(--warn)]`} role="alert">
           <TriangleAlert className="size-4" /> Your wallet is on the wrong network. Avantdex runs on Arc Testnet.

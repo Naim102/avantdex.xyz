@@ -1,5 +1,6 @@
 import { useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
+import { MarketBoard } from '@/components/MarketBoard'
 import { MarketCard } from '@/components/MarketCard'
 import { EmptyState, PageTitle, Skeleton, Tabs } from '@/components/ui'
 import { UpcomingSection } from '@/components/UpcomingSection'
@@ -26,6 +27,7 @@ export default function Explore() {
   const status = sp.get('status') ?? ''
   const sort = sp.get('sort') ?? ''
   const badge = sp.get('badge') ?? ''
+  const view = sp.get('view') === 'cards' ? 'cards' : 'board'
 
   const set = (k: string, v: string) => {
     const n = new URLSearchParams(sp)
@@ -94,14 +96,27 @@ export default function Explore() {
         <EmptyState title={filtered || tab !== 'All Markets' ? 'No matching markets' : 'No markets yet'} body={filtered || tab !== 'All Markets' ? 'Try a different tab or clear the filters.' : 'Markets appear here after a project is approved, verified and activated.'} />
       ) : (
         <>
-          <p className="text-sm text-[var(--subtle)]" aria-live="polite">
-            {items.length} market{items.length === 1 ? '' : 's'}
-          </p>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {items.map((m) => (
-              <MarketCard key={m.id} m={m} />
-            ))}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm font-medium text-[var(--muted)]" aria-live="polite">
+              {items.length} market{items.length === 1 ? '' : 's'}
+            </p>
+            <div className="flex gap-1 rounded-lg border-2 border-[var(--line)] bg-[var(--surface)] p-1" role="group" aria-label="Layout">
+              {([['board', 'Board'], ['cards', 'Cards']] as const).map(([v, l]) => (
+                <button key={v} aria-pressed={view === v} onClick={() => set('view', v === 'board' ? '' : v)} className={`rounded-md px-3 py-1.5 text-sm font-bold ${view === v ? 'bg-[var(--ink)] text-[var(--bg)]' : 'hover:bg-[var(--tint-2)]'}`}>
+                  {l}
+                </button>
+              ))}
+            </div>
           </div>
+          {view === 'board' ? (
+            <MarketBoard markets={items} />
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {items.map((m) => (
+                <MarketCard key={m.id} m={m} />
+              ))}
+            </div>
+          )}
         </>
       )}
       {(tab === 'All Markets' || tab === 'New Listings') && !filtered && <UpcomingSection />}

@@ -37,7 +37,7 @@ export function Notice({ tone = 'info', children }: { tone?: Tone; children: Rea
 
 export function Chip({ children, tone = 'neutral' }: { children: ReactNode; tone?: 'neutral' | 'ok' | 'warn' | 'bad' | 'accent' }) {
   const bg = { neutral: 'var(--surface)', ok: 'var(--success-bg)', warn: 'var(--warn-bg)', bad: 'var(--danger-bg)', accent: 'var(--accent)' }[tone]
-  const color = tone === 'accent' ? '#262627' : 'var(--ink)'
+  const color = tone === 'accent' ? 'var(--accent-ink)' : 'var(--ink)'
   return (
     <span className="chip" style={{ color, background: bg }}>
       {children}
@@ -80,7 +80,7 @@ export function PageTitle({ title, subtitle, right }: { title: string; subtitle?
   return (
     <div className="flex flex-wrap items-end justify-between gap-3">
       <div>
-        <h1 className="display text-balance break-words text-[1.75rem] uppercase leading-none sm:text-5xl">{title}</h1>
+        <h1 className="display text-balance break-words text-[1.75rem] leading-none sm:text-5xl">{title}</h1>
         {subtitle && <p className="mt-2 max-w-2xl text-pretty text-sm font-medium text-[var(--muted)] sm:text-base">{subtitle}</p>}
       </div>
       {right}
@@ -179,7 +179,7 @@ export function BadgeRow({ badges, compact = false }: { badges: Badge[]; compact
       {badges.map((b) => {
         const info = BADGE_INFO[b.badge]
         return (
-          <span key={b.badge} className="chip group relative cursor-help" style={{ background: 'var(--accent)', color: '#262627' }} tabIndex={0} title={`${info?.means} ${info?.not}`}>
+          <span key={b.badge} className="chip group relative cursor-help" style={{ background: 'var(--accent)', color: 'var(--accent-ink)' }} tabIndex={0} title={`${info?.means} ${info?.not}`}>
             <ShieldCheck className="size-3" />
             {compact ? info?.label.split(' ')[0] : info?.label}
           </span>
@@ -266,7 +266,7 @@ export function DataTable({ head, rows, empty }: { head: string[]; rows: ReactNo
             {r.map((c, j) =>
               head[j] ? (
                 <div key={j} className="flex items-start justify-between gap-3">
-                  <span className="shrink-0 pt-0.5 text-[11px] font-bold uppercase tracking-wide text-[var(--muted)]">{head[j]}</span>
+                  <span className="shrink-0 pt-0.5 text-[11px] font-bold text-[var(--muted)]">{head[j]}</span>
                   <span className="min-w-0 break-words text-right font-medium">{c}</span>
                 </div>
               ) : (
@@ -281,7 +281,7 @@ export function DataTable({ head, rows, empty }: { head: string[]; rows: ReactNo
       <div className="hidden overflow-x-auto sm:block">
         <table className="w-full min-w-[34rem] text-left text-sm">
           <thead>
-            <tr className="border-b-2 border-[var(--line)] text-xs uppercase tracking-wide text-[var(--muted)]">
+            <tr className="border-b-2 border-[var(--line)] text-xs text-[var(--muted)]">
               {head.map((h, k) => (
                 <th key={`${h}${k}`} className="px-3 py-2 font-semibold">
                   {h}

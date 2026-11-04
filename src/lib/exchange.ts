@@ -19,7 +19,7 @@ export const MARKET_STATUS_LABEL: Record<string, string> = {
 export const fee = (value: bigint): bigint => (value * FEE_BPS) / BPS
 
 export function fmtUsdc(raw: bigint | string | null | undefined, digits = 2): string {
-  if (raw === null || raw === undefined) return '—'
+  if (raw === null || raw === undefined) return '–'
   const s = formatUnits(BigInt(raw), USDC_DECIMALS)
   const n = Number(s)
   return n.toLocaleString('en-US', { minimumFractionDigits: Math.min(digits, 2), maximumFractionDigits: Math.max(digits, 2) })
@@ -43,7 +43,7 @@ export function pricePerToken(priceLot: bigint, m: Pick<Market, 'lot_size' | 'to
 }
 
 export function fmtPricePerToken(priceLot: string | null | undefined, m: Pick<Market, 'lot_size' | 'token_decimals'>): string {
-  if (priceLot === null || priceLot === undefined) return '—'
+  if (priceLot === null || priceLot === undefined) return '–'
   const p = pricePerToken(BigInt(priceLot), m)
   const n = Number(p)
   return n.toLocaleString('en-US', { maximumFractionDigits: n < 1 ? 6 : 4 })

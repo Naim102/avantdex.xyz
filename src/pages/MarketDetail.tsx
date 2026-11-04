@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useAccount } from 'wagmi'
 import { ArrowLeft, ExternalLink } from 'lucide-react'
 import { ProjectLogo } from '@/components/MarketCard'
+import { DepthChart } from '@/components/DepthChart'
 import { OrderBook } from '@/components/OrderBook'
 import { TradePanel } from '@/components/TradePanel'
 import { MyOrdersTable } from '@/components/MyOrders'
@@ -73,11 +74,11 @@ export default function MarketDetail() {
 
       <header className="glass space-y-4 rounded-3xl p-4 sm:p-5">
         <div className="flex items-start gap-3 sm:gap-4">
-          <ProjectLogo name={p?.name ?? '?'} url={p?.logo_url} size="size-12 sm:size-16" />
+          <ProjectLogo name={p?.name ?? `M${m.onchain_id}`} url={p?.logo_url} size="size-12 sm:size-16" />
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="display min-w-0 break-words text-2xl font-bold leading-tight sm:text-3xl">{p?.name}</h1>
-              <span className="mono text-base text-[var(--ink-2)] sm:text-lg">{p?.token_symbol}</span>
+              <h1 className="display min-w-0 break-words text-2xl font-bold leading-tight sm:text-3xl">{p?.name ?? `Market #${m.onchain_id}`}</h1>
+              <span className="mono text-base text-[var(--ink-2)] sm:text-lg">{p?.token_symbol ?? shortAddr(m.token_address)}</span>
               <StatusChip status={m.status} />
             </div>
             <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -88,12 +89,14 @@ export default function MarketDetail() {
             </div>
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-          <Stat label="Last price" value={s.last_price ? `${fmtPricePerToken(s.last_price, m)} USDC` : '—'} />
-          <Stat label="Best bid" value={s.best_bid ? fmtPricePerToken(s.best_bid, m) : '—'} />
-          <Stat label="Best ask" value={s.best_ask ? fmtPricePerToken(s.best_ask, m) : '—'} />
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+          <Stat label="Last price" value={s.last_price ? `${fmtPricePerToken(s.last_price, m)} USDC` : '–'} />
+          <Stat label="Best bid" value={s.best_bid ? fmtPricePerToken(s.best_bid, m) : '–'} />
+          <Stat label="Best ask" value={s.best_ask ? fmtPricePerToken(s.best_ask, m) : '–'} />
           <Stat label="24h volume" value={`${fmtUsdc(s.volume_24h ?? '0')} USDC`} />
           <Stat label="Total volume" value={`${fmtUsdc(s.volume_total ?? '0')} USDC`} />
+          <Stat label="Open interest" value={`${fmtUsdc(s.open_interest ?? '0')} USDC`} />
+          <Stat label="Trades" value={String(s.trades ?? 0)} />
           <Stat label="TGE" value={fmtDay(m.tge_date)} />
         </div>
         <Notice>Badges do not imply investment safety, profitability or guaranteed token delivery. This is unaudited testnet software.</Notice>
@@ -103,11 +106,14 @@ export default function MarketDetail() {
         <div className="min-w-0 space-y-4">
           <Tabs label="Market sections" tabs={TABS} value={tab} onChange={setTab} />
           {tab === 'Order Book' && (
-            <OrderBook book={bookQ.data} market={m} myPrices={myPrices} onPick={(price) => setPick({ price, nonce: Date.now() })} />
+            <>
+              {bookQ.data && <DepthChart book={bookQ.data} market={m} />}
+              <OrderBook book={bookQ.data} market={m} myPrices={myPrices} onPick={(price) => setPick({ price, nonce: Date.now() })} />
+            </>
           )}
           {tab === 'Recent Trades' && (
             <div className="glass overflow-hidden rounded-3xl">
-              <div className="grid grid-cols-4 gap-2 border-b border-[var(--hair)] px-3 py-2.5 text-xs font-semibold uppercase tracking-wide text-[var(--subtle)]">
+              <div className="grid grid-cols-4 gap-2 border-b border-[var(--hair)] px-3 py-2.5 text-xs font-semibold text-[var(--subtle)]">
                 <span>Price</span>
                 <span className="text-right">Size</span>
                 <span className="text-right">Time</span>
@@ -139,15 +145,15 @@ export default function MarketDetail() {
                 </div>
                 <div>
                   <dt className="label">Blockchain</dt>
-                  <dd>{p.blockchain || '—'}</dd>
+                  <dd>{p.blockchain || '–'}</dd>
                 </div>
                 <div>
                   <dt className="label">Supply</dt>
-                  <dd className="whitespace-pre-line">{p.supply_info || '—'}</dd>
+                  <dd className="whitespace-pre-line">{p.supply_info || '–'}</dd>
                 </div>
                 <div>
                   <dt className="label">Allocation</dt>
-                  <dd className="whitespace-pre-line">{p.allocation_info || '—'}</dd>
+                  <dd className="whitespace-pre-line">{p.allocation_info || '–'}</dd>
                 </div>
                 <div className="sm:col-span-2">
                   <dt className="label">TGE</dt>

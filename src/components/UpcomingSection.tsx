@@ -12,7 +12,7 @@ export function useUpcoming() {
 
 function UpcomingCard({ p }: { p: Upcoming }) {
   return (
-    <article className="glass flex flex-col gap-3 rounded-3xl p-4 sm:p-5">
+    <article className="glass flex flex-col gap-3 p-4 sm:p-5">
       <div className="flex items-start gap-3">
         <ProjectLogo name={p.name} url={p.logo_url} />
         <div className="min-w-0 flex-1">
@@ -41,8 +41,8 @@ export function UpcomingSection({ limit, title = 'Coming soon' }: { limit?: numb
   return (
     <section className="space-y-4" aria-label={title}>
       <div>
-        <h2 className="display text-2xl uppercase sm:text-3xl">{title}</h2>
-        <p className="mt-1 text-sm font-bold uppercase tracking-wide text-[var(--muted)]">Approved projects, markets open soon</p>
+        <h2 className="display text-2xl sm:text-3xl">{title}</h2>
+        <p className="mt-1 text-sm font-bold text-[var(--muted)]">Approved projects, markets open soon</p>
       </div>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {items.map((p) => (

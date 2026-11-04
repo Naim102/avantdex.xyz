@@ -82,21 +82,21 @@ function ProjectDetail({ p, onClose, showBadges }: { p: AdminProject; onClose: (
         <dl className="grid gap-3 sm:grid-cols-2">
           <div><dt className="label">Applicant</dt><dd className="mono break-all text-xs">{p.applicant}</dd></div>
           <div><dt className="label">Team wallet</dt><dd className="mono break-all text-xs">{p.team_wallet}</dd></div>
-          <div><dt className="label">Website</dt><dd className="break-all">{p.website || '—'}</dd></div>
+          <div><dt className="label">Website</dt><dd className="break-all">{p.website || '–'}</dd></div>
           <div><dt className="label">Token contract</dt><dd className="mono break-all text-xs">{p.token_address || 'not provided'}</dd></div>
-          <div className="sm:col-span-2"><dt className="label">Socials</dt><dd className="break-all">{p.socials.join(', ') || '—'}</dd></div>
-          <div className="sm:col-span-2"><dt className="label">Documentation</dt><dd className="break-all">{p.documentation.join(', ') || '—'}</dd></div>
+          <div className="sm:col-span-2"><dt className="label">Socials</dt><dd className="break-all">{p.socials.join(', ') || '–'}</dd></div>
+          <div className="sm:col-span-2"><dt className="label">Documentation</dt><dd className="break-all">{p.documentation.join(', ') || '–'}</dd></div>
           <div className="sm:col-span-2"><dt className="label">Description</dt><dd className="whitespace-pre-wrap">{p.description}</dd></div>
           <div className="sm:col-span-2"><dt className="label">Ownership / authorisation evidence</dt><dd className="whitespace-pre-wrap">{p.evidence}</dd></div>
-          <div><dt className="label">Supply</dt><dd className="whitespace-pre-wrap">{p.supply_info || '—'}</dd></div>
-          <div><dt className="label">Allocation</dt><dd className="whitespace-pre-wrap">{p.allocation_info || '—'}</dd></div>
-          <div className="sm:col-span-2"><dt className="label">TGE</dt><dd className="whitespace-pre-wrap">{p.tge_info || '—'} {p.tge_date ? `(${fmtDate(p.tge_date)})` : ''}</dd></div>
+          <div><dt className="label">Supply</dt><dd className="whitespace-pre-wrap">{p.supply_info || '–'}</dd></div>
+          <div><dt className="label">Allocation</dt><dd className="whitespace-pre-wrap">{p.allocation_info || '–'}</dd></div>
+          <div className="sm:col-span-2"><dt className="label">TGE</dt><dd className="whitespace-pre-wrap">{p.tge_info || '–'} {p.tge_date ? `(${fmtDate(p.tge_date)})` : ''}</dd></div>
         </dl>
         <div>
           <div className="label">History</div>
           <ol className="space-y-1 text-xs text-[var(--subtle)]">
             {p.history.map((h, i) => (
-              <li key={i}>{fmtDate(h.at)} · {h.from ?? '—'} → <b className="text-[var(--ink-2)]">{h.to}</b> · {shortAddr(h.actor)} {h.reason && `· “${h.reason}”`}</li>
+              <li key={i}>{fmtDate(h.at)} · {h.from ?? '–'} → <b className="text-[var(--ink-2)]">{h.to}</b> · {shortAddr(h.actor)} {h.reason && `· “${h.reason}”`}</li>
             ))}
           </ol>
         </div>

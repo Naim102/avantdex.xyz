@@ -131,7 +131,7 @@ export function TradePanel({ market, cfg, initialSide, pick }: { market: Market;
   }
 
   const sideBtn = (s: 'buy' | 'sell') => (
-    <button type="button" onClick={() => setSide(s)} aria-pressed={side === s} className={`flex-1 rounded-lg py-2.5 text-sm font-extrabold uppercase tracking-wide transition-colors ${side === s ? (s === 'buy' ? 'bg-[var(--accent)] text-[#262627]' : 'bg-[#FF5A4F] text-[#262627]') : 'text-[var(--ink)] hover:bg-[var(--tint-2)]'}`}>
+    <button type="button" onClick={() => setSide(s)} aria-pressed={side === s} className={`flex-1 rounded-lg py-2.5 text-sm font-extrabold transition-colors ${side === s ? (s === 'buy' ? 'bg-[var(--buy)] text-[#262627]' : 'bg-[var(--sell)] text-[#262627]') : 'text-[var(--ink)] hover:bg-[var(--tint-2)]'}`}>
       {s === 'buy' ? 'Buy' : 'Sell'}
     </button>
   )

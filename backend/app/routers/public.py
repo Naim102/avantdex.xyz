@@ -81,7 +81,11 @@ def _live_orders_filter(now: dt.datetime):
 def bulk_stats(db: Session, onchain_ids: list[int]) -> dict[int, dict]:
     now = utcnow()
     day_ago = now - dt.timedelta(hours=24)
-    stats = {i: {"last_price": None, "best_bid": None, "best_ask": None, "volume_24h": 0, "volume_total": 0, "open_interest": 0} for i in onchain_ids}
+    stats = {
+        i: {"last_price": None, "best_bid": None, "best_ask": None, "volume_24h": 0, "volume_total": 0, "open_interest": 0,
+            "bid_depth": 0, "ask_depth": 0, "open_orders": 0, "trades": 0}
+        for i in onchain_ids
+    }
     if not onchain_ids:
         return stats
     for mid, v in db.execute(
@@ -119,8 +123,18 @@ def bulk_stats(db: Session, onchain_ids: list[int]) -> dict[int, dict]:
         .group_by(Order.market_onchain_id, Order.side)
     ):
         stats[mid]["best_ask"] = int(price)
+    # resting liquidity per side: USDC value of the unfilled part of every live order
+    for mid, side, value, n in db.execute(
+        select(Order.market_onchain_id, Order.side, func.coalesce(func.sum((Order.lots - Order.filled) * Order.price), 0), func.count(Order.id))
+        .where(Order.market_onchain_id.in_(onchain_ids), _live_orders_filter(now))
+        .group_by(Order.market_onchain_id, Order.side)
+    ):
+        stats[mid]["bid_depth" if side == "buy" else "ask_depth"] = int(value)
+        stats[mid]["open_orders"] += n
+    for mid, n in db.execute(select(Trade.market_onchain_id, func.count(Trade.id)).where(Trade.market_onchain_id.in_(onchain_ids)).group_by(Trade.market_onchain_id)):
+        stats[mid]["trades"] = n
     for s in stats.values():  # amounts as strings to avoid precision loss in JSON
-        for k in ("last_price", "best_bid", "best_ask", "volume_24h", "volume_total", "open_interest"):
+        for k in ("last_price", "best_bid", "best_ask", "volume_24h", "volume_total", "open_interest", "bid_depth", "ask_depth"):
             if s[k] is not None:
                 s[k] = str(s[k])
     return stats
@@ -221,6 +235,29 @@ def list_markets(
     elif order == "best_ask":
         items.sort(key=lambda i: (i["stats"]["best_ask"] is None, int(i["stats"]["best_ask"] or 0)))
     return {"items": items, "count": len(items)}
+
+
+@router.get("/stats")
+def platform_stats(db: Session = Depends(get_db)) -> dict:
+    """Platform-wide totals computed from indexed chain data (nothing here is estimated or invented)."""
+    now = utcnow()
+    day_ago = now - dt.timedelta(hours=24)
+    live = ("Live", "Suspended", "SettlementOpen")
+    settled = list(db.scalars(select(Trade).where(Trade.status == "Settled")))
+    return {
+        "markets_live": db.scalar(select(func.count(Market.id)).where(Market.onchain_id.is_not(None), Market.status.in_(live), Market.delisted.is_(False))) or 0,
+        "markets_total": db.scalar(select(func.count(Market.id)).where(Market.onchain_id.is_not(None), Market.status.in_(PUBLIC_STATUSES), Market.delisted.is_(False))) or 0,
+        "projects_upcoming": db.scalar(select(func.count(Project.id)).where(Project.status.in_(("Approved", "Market Setup")))) or 0,
+        "open_orders": db.scalar(select(func.count(Order.id)).where(_live_orders_filter(now))) or 0,
+        "bid_depth": str(db.scalar(select(func.coalesce(func.sum((Order.lots - Order.filled) * Order.price), 0)).where(Order.side == "buy", _live_orders_filter(now))) or 0),
+        "ask_depth": str(db.scalar(select(func.coalesce(func.sum((Order.lots - Order.filled) * Order.price), 0)).where(Order.side == "sell", _live_orders_filter(now))) or 0),
+        "volume_24h": str(db.scalar(select(func.coalesce(func.sum(Trade.value), 0)).where(Trade.created_at >= day_ago)) or 0),
+        "volume_total": str(db.scalar(select(func.coalesce(func.sum(Trade.value), 0))) or 0),
+        "open_interest": str(db.scalar(select(func.coalesce(func.sum(Trade.value), 0)).where(Trade.status == "Open")) or 0),
+        "trades_total": db.scalar(select(func.count(Trade.id))) or 0,
+        "trades_settled": len(settled),
+        "fees_paid": str(sum(t.buyer_fee + t.seller_fee for t in settled)),
+    }
 
 
 @router.get("/projects/upcoming")

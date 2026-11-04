@@ -39,7 +39,7 @@ export default function Legal() {
   return (
     <div className="mx-auto max-w-3xl space-y-5">
       <PageTitle title={p.title} />
-      <Notice tone="warn">Draft — not legal advice. This page has not been reviewed by qualified counsel. No legal entity, jurisdiction, restricted-country list or regulatory approval is stated here.</Notice>
+      <Notice tone="warn">Draft, not legal advice. This page has not been reviewed by qualified counsel. No legal entity, jurisdiction, restricted-country list or regulatory approval is stated here.</Notice>
       <div className="glass space-y-3 rounded-3xl p-6 text-pretty text-[var(--ink-2)]">
         {p.body.map((t) => (
           <p key={t}>{t}</p>
