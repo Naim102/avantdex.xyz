@@ -3,12 +3,10 @@ import { Link, NavLink } from 'react-router-dom'
 import { useAccount, useDisconnect, useSwitchChain } from 'wagmi'
 import { ConnectKitButton } from 'connectkit'
 import { useQuery } from '@tanstack/react-query'
-import { Bell, Check, ChevronDown, Copy, ExternalLink, LogOut, TriangleAlert } from 'lucide-react'
+import { Bell, ChevronDown, Copy, ExternalLink, LogOut, TriangleAlert } from 'lucide-react'
 import { toast } from 'sonner'
 import { Logo } from '@/components/Logo'
-import { XLink } from '@/components/XIcon'
 import { CHAIN_ID, useAuth, useConfig, useUsdc } from '@/hooks/useApp'
-import { THEMES, useTheme } from '@/hooks/useTheme'
 import { api } from '@/lib/api'
 import { addrUrl, shortAddr } from '@/lib/format'
 import { fmtUsdc } from '@/lib/exchange'
@@ -24,55 +22,6 @@ const navClass = ({ isActive }: { isActive: boolean }) =>
   `whitespace-nowrap rounded-lg border-2 px-3.5 py-1.5 text-sm font-bold transition-colors ${
     isActive ? 'border-[var(--line)] bg-[var(--accent)] text-[var(--accent-ink)]' : 'border-transparent text-[var(--ink)] hover:border-[var(--line)] hover:bg-[var(--surface)]'
   }`
-
-function ThemePicker() {
-  const { theme, setTheme } = useTheme()
-  const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    if (!open) return
-    const onDown = (e: MouseEvent) => ref.current && !ref.current.contains(e.target as Node) && setOpen(false)
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false)
-    document.addEventListener('mousedown', onDown)
-    document.addEventListener('keydown', onKey)
-    return () => {
-      document.removeEventListener('mousedown', onDown)
-      document.removeEventListener('keydown', onKey)
-    }
-  }, [open])
-  const current = THEMES.find((t) => t.id === theme) ?? THEMES[0]
-  return (
-    <div className="relative" ref={ref}>
-      <button onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-haspopup="menu" className="btn btn-ghost !min-h-11 !gap-2 !px-3" aria-label={`Theme: ${current.name}. Change theme`}>
-        <span className="size-4 rounded-sm border-2 border-[var(--line)]" style={{ background: `linear-gradient(135deg, ${current.swatch[0]} 50%, ${current.swatch[1]} 50%)` }} aria-hidden="true" />
-        <span className="hidden text-sm sm:inline">Theme</span>
-      </button>
-      {open && (
-        <div role="menu" aria-label="Themes" className="glass lift absolute right-0 z-40 mt-3 w-60 p-1.5">
-          {THEMES.map((t) => (
-            <button
-              key={t.id}
-              role="menuitemradio"
-              aria-checked={t.id === theme}
-              onClick={() => {
-                setTheme(t.id)
-                setOpen(false)
-              }}
-              className={`flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-left hover:bg-[var(--tint-2)] ${t.id === theme ? 'bg-[var(--tint-2)]' : ''}`}
-            >
-              <span className="size-7 shrink-0 rounded-sm border-2 border-[var(--line)]" style={{ background: `linear-gradient(135deg, ${t.swatch[0]} 50%, ${t.swatch[1]} 50%)` }} aria-hidden="true" />
-              <span className="min-w-0">
-                <span className="block text-sm font-bold">{t.name}</span>
-                <span className="block text-xs text-[var(--muted)]">{t.note}</span>
-              </span>
-              {t.id === theme && <Check className="ml-auto size-4 shrink-0" aria-hidden="true" />}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
 
 function AccountMenu({ address }: { address: string }) {
   const [open, setOpen] = useState(false)
@@ -169,7 +118,6 @@ export function Header() {
         <Link to="/" className="flex items-center gap-2.5" aria-label="Avantdex home">
           <Logo className="size-9 sm:size-10" />
           <span className="display text-lg font-bold uppercase tracking-tight sm:text-xl">Avantdex</span>
-          <span className="ml-1 hidden text-xs font-bold text-[var(--muted)] sm:inline">Arc Testnet</span>
         </Link>
         <nav className="no-scrollbar hidden gap-1 overflow-x-auto lg:flex" aria-label="Main">
           {NAV.map((n) => (
@@ -179,8 +127,6 @@ export function Header() {
           ))}
         </nav>
         <div className="flex items-center gap-1.5 sm:gap-2">
-          <XLink className="btn btn-ghost hidden !min-h-11 !px-3 sm:inline-flex" />
-          <ThemePicker />
           <NotificationBell />
           <ConnectKitButton.Custom>
             {({ isConnected, show, address }) =>
@@ -195,13 +141,12 @@ export function Header() {
           </ConnectKitButton.Custom>
         </div>
       </div>
-      <nav className="grid grid-cols-[repeat(4,auto)_2.75rem] items-center gap-1 px-3 pb-2.5 sm:flex sm:justify-center lg:hidden" aria-label="Main">
+      <nav className="grid grid-cols-4 gap-1 px-3 pb-2.5 sm:flex sm:justify-center lg:hidden" aria-label="Main">
         {NAV.map((n) => (
           <NavLink key={n.to} to={n.to} end={n.end} className={(st) => `${navClass(st)} text-center !px-2 sm:!px-3.5`}>
             {n.short}
           </NavLink>
         ))}
-        <XLink className="flex size-10 items-center justify-center rounded-lg border-2 border-[var(--line)] bg-[var(--surface)] sm:hidden" />
       </nav>
     </header>
   )

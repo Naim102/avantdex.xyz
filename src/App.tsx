@@ -12,8 +12,7 @@ import { ApprovedProjects, Applications, Verification } from '@/pages/admin/Proj
 import { LiveMarkets, MarketManagement, SettlementManagement } from '@/pages/admin/Markets'
 import { AuditLogs, Disputes, Overview, Roles, SettingsPage, Users } from '@/pages/admin/Misc'
 import { EmptyState } from '@/components/ui'
-import { useConfig } from '@/hooks/useApp'
-import { XLink } from '@/components/XIcon'
+import { Footer } from '@/components/Footer'
 
 function ScrollTop() {
   const { pathname } = useLocation()
@@ -21,25 +20,6 @@ function ScrollTop() {
     window.scrollTo(0, 0)
   }, [pathname])
   return null
-}
-
-function Footer() {
-  const { data: cfg } = useConfig()
-  return (
-    <footer className="mx-auto max-w-6xl space-y-2 px-3 pb-20 text-xs text-[var(--subtle)] sm:px-4 sm:pb-24">
-      <div className="flex flex-wrap gap-x-4 gap-y-1">
-        {[['terms', 'Terms'], ['privacy', 'Privacy'], ['risk', 'Risk Disclosure'], ['cookies', 'Cookies'], ['listing-policy', 'Listing Policy'], ['rules', 'Trading & Settlement Rules']].map(([k, l]) => (
-          <Link key={k} to={`/legal/${k}`} className="hover:text-[var(--ink)]">
-            {l}
-          </Link>
-        ))}
-        <XLink label className="inline-flex items-center gap-1.5 font-bold text-[var(--ink)] hover:text-[var(--accent-text)]" />
-      </div>
-      <p>
-        Avantdex runs on {cfg?.network ?? 'Arc Testnet'}. Testnet software, <b>not audited</b>. Onchain tokens and pre-market positions are not investment advice and carry significant risk. Verification badges do not imply safety or guaranteed delivery.
-      </p>
-    </footer>
-  )
 }
 
 export default function App() {
