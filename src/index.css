@@ -6,29 +6,29 @@
   Avantdex design system.
 
   Direction: a calm, professional trading product. Brand green #28DF99 and brand black #262627 stay constant;
-  each theme changes the page, the surfaces and the voice.
+  each theme changes the page and the surfaces.
   - Archivo for text and headings (regular width, weight 700 for headings), IBM Plex Mono for every figure so
     digits line up in columns.
   - 1px soft borders, soft layered shadows, moderate radii. Shadow marks elevation only: the focal block of a page
     and floating menus.
   - Motion is short and purposeful: hover feedback, content that eases in once, a page transition.
 
-  Themes (data-theme on <html>): paper (default), sky, mint, ink, terminal.
+  Themes (data-theme on <html>): sky (default) and ink.
   Every text/background pair used by the UI was checked against WCAG AA (4.5:1).
 */
 
 :root,
-[data-theme='paper'] {
+[data-theme='sky'] {
   color-scheme: light;
-  --bg: #f6f5f1;
-  --bg-2: #eeede7;
+  --bg: #eaf0fb;
+  --bg-2: #dce5f6;
   --surface: #ffffff;
   --ink: #262627;
   --ink-2: #333335;
-  --muted: #505055;
-  --subtle: #67676c;
-  --line: #deddd5;
-  --line-strong: #bdbbb0;
+  --muted: #48484e;
+  --subtle: #5c5c64;
+  --line: #cfd9ee;
+  --line-strong: #aebbd8;
   --hair: rgba(38, 38, 39, 0.1);
   --tint: rgba(38, 38, 39, 0.04);
   --tint-2: rgba(38, 38, 39, 0.08);
@@ -63,47 +63,7 @@
   --border-strong: var(--line-strong);
   --focus: #08774c;
   --surface-strong: var(--tint-2);
-  --on-ink: #f6f5f1;
-}
-
-/* Sky: a cool, bright page for people who find cream too warm. */
-[data-theme='sky'] {
-  color-scheme: light;
-  --bg: #eaf0fb;
-  --bg-2: #dce5f6;
-  --line: #cfd9ee;
-  --line-strong: #aebbd8;
-  --muted: #48484e;
-  --subtle: #5c5c64;
   --on-ink: #eaf0fb;
-}
-
-/* Mint: the brand color is the page. Actions flip to black so they stay visible on green. */
-[data-theme='mint'] {
-  color-scheme: light;
-  --bg: #28df99;
-  --bg-2: #1fcd8a;
-  --line: rgba(38, 38, 39, 0.2);
-  --line-strong: rgba(38, 38, 39, 0.5);
-  --muted: #1c3a2e;
-  --subtle: #264a3b;
-  --hair: rgba(38, 38, 39, 0.18);
-  --tint: rgba(38, 38, 39, 0.07);
-  --accent: #262627;
-  --accent-hover: #3b3b3d;
-  --accent-ink: #28df99;
-  --accent-text: #262627;
-  --mark: #ffffff;
-  --mark-ink: #262627;
-  --focus: #ffffff;
-  --on-ink: #28df99;
-}
-[data-theme='mint'] .glass,
-[data-theme='mint'] .glass-inner {
-  --muted: #505055;
-  --subtle: #67676c;
-  --accent-text: #08774c;
-  --line: #deddd5;
 }
 
 [data-theme='ink'] {
@@ -133,44 +93,6 @@
   --shadow-hover: 0 2px 4px rgba(0, 0, 0, 0.4), 0 18px 36px -16px rgba(0, 0, 0, 0.8);
   --focus: #28df99;
   --on-ink: #262627;
-}
-
-/* Terminal: square corners, no shadows, one typeface. For people who live in a console. */
-[data-theme='terminal'] {
-  color-scheme: dark;
-  --bg: #07100b;
-  --bg-2: #0b1810;
-  --surface: #0d1a13;
-  --ink: #d4fbe6;
-  --ink-2: #bff0d6;
-  --muted: #9fd8b9;
-  --subtle: #84bd9d;
-  --line: #1f6b4c;
-  --line-strong: #2f9a6e;
-  --hair: rgba(40, 223, 153, 0.2);
-  --tint: rgba(40, 223, 153, 0.06);
-  --tint-2: rgba(40, 223, 153, 0.13);
-  --accent-ink: #04120a;
-  --accent-hover: #55ebb3;
-  --accent-text: #28df99;
-  --success: #28df99;
-  --success-bg: rgba(40, 223, 153, 0.16);
-  --danger: #ff8f86;
-  --danger-bg: rgba(255, 90, 79, 0.18);
-  --warn: #ffd65a;
-  --warn-bg: rgba(255, 214, 90, 0.15);
-  --shadow: none;
-  --shadow-sm: none;
-  --shadow-hover: none;
-  --r-sm: 0px;
-  --r-md: 0px;
-  --r-card: 0px;
-  --font-display: 'IBM Plex Mono', ui-monospace, Menlo, monospace;
-  --font-body: 'IBM Plex Mono', ui-monospace, Menlo, monospace;
-  --display-transform: uppercase;
-  --display-weight: 600;
-  --focus: #28df99;
-  --on-ink: #07100b;
 }
 
 * {
@@ -299,10 +221,6 @@ body {
     background: var(--danger-bg);
     color: var(--danger);
     border-color: transparent;
-  }
-  [data-theme='terminal'] .btn:hover:not(:disabled) {
-    transform: none;
-    background: var(--tint-2);
   }
 
   /* inputs */

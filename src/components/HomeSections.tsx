@@ -5,7 +5,9 @@ import { motion, useReducedMotion, useScroll, useTransform } from 'framer-motion
 import { Reveal } from '@/components/Reveal'
 import { ThreeCanvas } from '@/components/three/ThreeCanvas'
 import { buildPyramid } from '@/components/three/scenes'
+import { CountUp } from '@/components/CountUp'
 import { Logo } from '@/components/Logo'
+import { ProjectLogo } from '@/components/MarketParts'
 import { api, type Market } from '@/lib/api'
 import { fmtUsdc, fmtLotsAsTokens, fmtPricePerToken } from '@/lib/exchange'
 import { timeAgo } from '@/lib/format'
@@ -71,54 +73,98 @@ function LatestTrades() {
   )
 }
 
-/** Buy-side and sell-side liquidity per market as a plain two-sided bar chart, all on one scale. */
+/** Resting liquidity per market: how deep each book is (bar length) and how it splits between buyers and sellers (colors). */
 function LiquidityChart({ markets }: { markets: Market[] }) {
   const reduce = useReducedMotion()
   const rows = markets
-    .map((m) => ({ m, bid: Number(m.stats.bid_depth ?? 0) / 1e6, ask: Number(m.stats.ask_depth ?? 0) / 1e6 }))
-    .filter((r) => r.bid + r.ask > 0)
-    .sort((a, b) => b.bid + b.ask - (a.bid + a.ask))
+    .map((m) => {
+      const bid = Number(m.stats.bid_depth ?? 0) / 1e6
+      const ask = Number(m.stats.ask_depth ?? 0) / 1e6
+      return { m, bid, ask, total: bid + ask }
+    })
+    .filter((r) => r.total > 0)
+    .sort((a, b) => b.total - a.total)
     .slice(0, 8)
-  const max = Math.max(...rows.flatMap((r) => [r.bid, r.ask]), 0)
   if (rows.length === 0) {
     return <div className="glass flex h-60 items-center justify-center p-6 text-center text-sm font-medium text-[var(--muted)]">No resting orders yet, so there is nothing to draw. Orders placed on any market appear here.</div>
   }
-  const bar = (pct: number, side: 'bid' | 'ask') => (
-    <motion.div
-      className={`absolute top-0 h-full ${side === 'bid' ? 'right-1/2 rounded-l-sm bg-[var(--success)]' : 'left-1/2 rounded-r-sm bg-[var(--danger)]'}`}
-      initial={reduce ? false : { width: 0 }}
-      whileInView={{ width: `${pct / 2}%` }}
-      viewport={{ once: true, margin: '0px 0px -10% 0px' }}
-      transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-      style={reduce ? { width: `${pct / 2}%` } : undefined}
-    />
-  )
+  const maxTotal = Math.max(...rows.map((r) => r.total))
+  const bidTotal = rows.reduce((n, r) => n + r.bid, 0)
+  const askTotal = rows.reduce((n, r) => n + r.ask, 0)
+  const buyShare = Math.round((bidTotal / (bidTotal + askTotal)) * 100)
+  const money = (n: number) => n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  const grow = (pct: number) => ({
+    initial: reduce ? false : { width: 0 },
+    whileInView: { width: `${pct}%` },
+    viewport: { once: true, margin: '0px 0px -10% 0px' } as const,
+    transition: { duration: 0.9, ease: [0.22, 1, 0.36, 1] as const },
+    style: reduce ? { width: `${pct}%` } : undefined,
+  })
   return (
-    <div className="glass p-4 sm:p-5">
-      <div className="flex items-center justify-between gap-3 text-xs font-semibold text-[var(--muted)]">
-        <span className="flex items-center gap-1.5"><span className="size-2.5 rounded-sm bg-[var(--success)]" aria-hidden="true" /> Buy side (USDC waiting to buy)</span>
-        <span className="flex items-center gap-1.5">Sell side (USDC value offered) <span className="size-2.5 rounded-sm bg-[var(--danger)]" aria-hidden="true" /></span>
+    <div className="glass lift overflow-hidden">
+      <div className="grid grid-cols-2 gap-px bg-[var(--line)] sm:grid-cols-3">
+        <div className="bg-[var(--surface)] px-5 py-4">
+          <div className="flex items-center gap-2 text-xs font-semibold text-[var(--muted)]"><span className="size-2 rounded-full bg-[var(--success)]" aria-hidden="true" />Buy side</div>
+          <div className="mt-1 text-2xl font-semibold"><CountUp className="tabular-nums" value={bidTotal} format={money} /> <span className="text-xs font-medium text-[var(--muted)]">USDC</span></div>
+        </div>
+        <div className="bg-[var(--surface)] px-5 py-4">
+          <div className="flex items-center gap-2 text-xs font-semibold text-[var(--muted)]"><span className="size-2 rounded-full bg-[var(--danger)]" aria-hidden="true" />Sell side</div>
+          <div className="mt-1 text-2xl font-semibold"><CountUp className="tabular-nums" value={askTotal} format={money} /> <span className="text-xs font-medium text-[var(--muted)]">USDC</span></div>
+        </div>
+        <div className="col-span-2 bg-[var(--surface)] px-5 py-4 sm:col-span-1">
+          <div className="flex items-baseline justify-between text-xs font-semibold text-[var(--muted)]">
+            <span>Balance</span>
+            <span className="tabular-nums text-[var(--ink)]">{buyShare}% buy / {100 - buyShare}% sell</span>
+          </div>
+          <div className="mt-3 flex h-2.5 gap-0.5 overflow-hidden rounded-[5px]" role="img" aria-label={`${buyShare}% of resting liquidity is on the buy side`}>
+            <motion.div className="h-full bg-[var(--success)]" {...grow(buyShare)} />
+            <div className="h-full flex-1 bg-[var(--danger)]" />
+          </div>
+        </div>
       </div>
-      <ul className="mt-3 divide-y divide-[var(--hair)]">
-        {rows.map(({ m, bid, ask }) => (
-          <li key={m.id}>
-            <Link to={`/market/${m.slug ?? m.onchain_id}`} className="block rounded-md px-1 py-3 transition-colors hover:bg-[var(--tint)]">
-              <div className="flex items-baseline justify-between gap-3">
-                <span className="truncate text-sm font-semibold">{m.project?.name ?? `Market #${m.onchain_id}`} <span className="mono text-xs font-medium text-[var(--muted)]">{m.project?.token_symbol}</span></span>
-                <span className="tabular-nums whitespace-nowrap text-xs text-[var(--muted)]">
-                  <span className="text-[var(--success)]">{fmtUsdc(String(Math.round(bid * 1e6)))}</span> | <span className="text-[var(--danger)]">{fmtUsdc(String(Math.round(ask * 1e6)))}</span>
+
+      <div className="hidden gap-5 border-t border-[var(--line)] px-5 py-2.5 text-xs font-semibold text-[var(--muted)] md:grid md:grid-cols-[minmax(0,13rem)_minmax(0,1fr)_7.5rem]">
+        <span>Market</span>
+        <span>Depth, buy and sell</span>
+        <span className="text-right">Total depth</span>
+      </div>
+      <ul className="divide-y divide-[var(--hair)] border-t border-[var(--line)] md:border-t-0">
+        {rows.map(({ m, bid, ask, total }) => {
+          const share = (bid / total) * 100
+          const width = (total / maxTotal) * 100
+          return (
+            <li key={m.id}>
+              <Link
+                to={`/market/${m.slug ?? m.onchain_id}`}
+                className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-5 gap-y-2.5 px-5 py-3.5 transition-colors hover:bg-[var(--tint)] md:grid-cols-[minmax(0,13rem)_minmax(0,1fr)_7.5rem]"
+              >
+                <span className="flex min-w-0 items-center gap-3">
+                  <ProjectLogo name={m.project?.name ?? `M${m.onchain_id}`} url={m.project?.logo_url} size="size-9" />
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-semibold">{m.project?.name ?? `Market #${m.onchain_id}`}</span>
+                    <span className="mono text-xs text-[var(--muted)]">{m.project?.token_symbol}</span>
+                  </span>
                 </span>
-              </div>
-              <div className="relative mt-2 h-2.5 rounded-sm bg-[var(--tint)]" role="img" aria-label={`Buy side ${bid.toFixed(2)} USDC, sell side ${ask.toFixed(2)} USDC`}>
-                {bar(max ? (bid / max) * 100 : 0, 'bid')}
-                {bar(max ? (ask / max) * 100 : 0, 'ask')}
-                <span className="absolute inset-y-[-3px] left-1/2 w-px bg-[var(--line-strong)]" aria-hidden="true" />
-              </div>
-            </Link>
-          </li>
-        ))}
+                <span className="tabular-nums text-right text-sm font-semibold md:order-3">
+                  {money(total)}
+                  <span className="block text-xs font-medium text-[var(--muted)]">
+                    <span className="text-[var(--success)]">{money(bid)}</span> / <span className="text-[var(--danger)]">{money(ask)}</span>
+                  </span>
+                </span>
+                <span className="col-span-2 md:order-2 md:col-span-1">
+                  <span className="block h-3 w-full rounded-[6px] bg-[var(--tint)]" role="img" aria-label={`${share.toFixed(0)}% buy side, ${(100 - share).toFixed(0)}% sell side, ${money(total)} USDC in total`}>
+                    <motion.span className="flex h-full gap-0.5 overflow-hidden rounded-[6px]" {...grow(width)}>
+                      <span className="h-full bg-[var(--success)]" style={{ width: `${share}%` }} />
+                      <span className="h-full flex-1 bg-[var(--danger)]" />
+                    </motion.span>
+                  </span>
+                </span>
+              </Link>
+            </li>
+          )
+        })}
       </ul>
-      <p className="mt-2 text-xs text-[var(--muted)]">Longest bar: {fmtUsdc(String(Math.round(max * 1e6)))} USDC. Every market uses the same scale.</p>
+      <p className="border-t border-[var(--line)] px-5 py-3 text-xs text-[var(--muted)]">Bar length compares markets on one scale (the deepest is {money(maxTotal)} USDC). Colors show how each book splits between buyers and sellers, in USDC.</p>
     </div>
   )
 }
@@ -138,7 +184,7 @@ export function LiquiditySection({ markets }: { markets: Market[] }) {
           <LiquidityChart markets={markets} />
         </Reveal>
       </div>
-      <Reveal className="self-end">
+      <Reveal className="self-start">
         <LatestTrades />
       </Reveal>
     </section>

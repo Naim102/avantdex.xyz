@@ -32,7 +32,7 @@ One admin level, and it is the super admin: any wallet with an admin row (`BOOTS
 
 ## Design
 
-Themes live in `src/index.css` (`data-theme` on `<html>`: paper, sky, mint, ink, terminal) and `src/hooks/useTheme.tsx`. Use the CSS variables (`--ink`, `--surface`, `--accent`, `--accent-ink`, `--line`, `--r-*`), never hard-coded colors, so every theme keeps working. No em dash characters in UI text. Market numbers come from the API (`/api/stats`, per-market `stats`); never invent them. `scripts/seed_demo_markets.py` creates real, clearly labelled demo markets on testnet only.
+Themes live in `src/index.css` (`data-theme` on `<html>`: sky, the default, and ink) and `src/hooks/useTheme.tsx`. Use the CSS variables (`--ink`, `--surface`, `--accent`, `--accent-ink`, `--line`, `--r-*`), never hard-coded colors, so every theme keeps working. No em dash characters in UI text. Market numbers come from the API (`/api/stats`, per-market `stats`); never invent them. `scripts/seed_demo_markets.py` creates real, clearly labelled demo markets on testnet only.
 
 ## Rules that must not break
 

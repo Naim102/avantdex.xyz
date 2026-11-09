@@ -112,15 +112,16 @@ await test('legal and listing pages open; unknown route shows 404 state', async 
   await visitor.goto(BASE + '/nope', { waitUntil: 'networkidle2' })
   if (!(await visitor.evaluate(() => document.body.innerText.includes('Page not found')))) throw new Error('no 404')
 })
-await test('theme menu switches all five themes and remembers the choice', async () => {
+await test('theme menu switches between Sky and Ink and remembers the choice', async () => {
   await visitor.goto(BASE + '/', { waitUntil: 'networkidle2' })
-  for (const t of ['Sky', 'Mint', 'Ink', 'Terminal', 'Paper']) {
+  if ((await visitor.evaluate(() => document.documentElement.dataset.theme)) !== 'sky') throw new Error('default theme is not sky')
+  for (const t of ['Ink', 'Sky']) {
     await visitor.evaluate(() => document.querySelector('footer button[aria-haspopup=menu]').click())
     await sleep(200)
     await mustClick(visitor, new RegExp('^' + t), '[role=menuitemradio]')
     await sleep(200)
-    const got = await visitor.evaluate(() => document.documentElement.dataset.theme)
-    if (got !== t.toLowerCase()) throw new Error(`theme ${t} -> ${got}`)
+    const got = await visitor.evaluate(() => [document.documentElement.dataset.theme, localStorage.getItem('avantdex.theme')])
+    if (got[0] !== t.toLowerCase() || got[1] !== t.toLowerCase()) throw new Error(`theme ${t} -> ${got}`)
   }
 })
 

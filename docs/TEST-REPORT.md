@@ -12,7 +12,7 @@ Run on 2026-11-10 against the local dev stack (anvil with Arc Testnet's chain id
 
 ## UI feature test, step by step
 
-**Public:** home loads with the market board, ledger and both 3D canvases and no page errors; home search leads to Explore with the query applied; Explore tabs, category filter and cards view; market page stats, depth chart and all four tabs; legal and listing pages and the 404 state; all five themes switch and are remembered.
+**Public:** home loads with the market board, ledger and both 3D canvases and no page errors; home search leads to Explore with the query applied; Explore tabs, category filter and cards view; market page stats, depth chart and all four tabs; legal and listing pages and the 404 state; both themes (Sky and Ink) switch and are remembered.
 
 **Trader wallet:** connect and sign in; place a limit buy (USDC approval then order) and see it in the portfolio; cancel it (status Cancelled); market buy (immediate-or-cancel) fills against resting sell orders; portfolio overview, trade history and settlement tabs; submit a listing request (counted per token).
 

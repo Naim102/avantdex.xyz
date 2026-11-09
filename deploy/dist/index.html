@@ -3,19 +3,17 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#28DF99" />
+    <meta name="theme-color" content="#eaf0fb" />
     <link rel="icon" type="image/png" href="/favicon.png" />
     <link rel="apple-touch-icon" href="/logo.png" />
     <script>
-      // set the theme before first paint (no flash): saved choice (older "light"/"dark" values are mapped), else paper
+      // set the theme before first paint (no flash): saved choice, else sky. Retired themes map to the nearest one.
       try {
         var t = localStorage.getItem("avantdex.theme");
-        var known = ["paper", "sky", "mint", "ink", "terminal"];
-        if (t === "light") t = "paper";
-        if (t === "dark") t = "ink";
-        document.documentElement.setAttribute("data-theme", known.indexOf(t) >= 0 ? t : "paper");
+        if (t === "dark" || t === "terminal") t = "ink";
+        document.documentElement.setAttribute("data-theme", t === "ink" ? "ink" : "sky");
       } catch (e) {
-        document.documentElement.setAttribute("data-theme", "paper");
+        document.documentElement.setAttribute("data-theme", "sky");
       }
     </script>
     <meta name="description" content="Avantdex. Pre-market trading on Arc. Order-book trading of upcoming tokens settled in USDC with escrow." />
@@ -26,8 +24,8 @@
       rel="stylesheet"
       href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=IBM+Plex+Mono:wght@400;500;600&display=swap"
     />
-    <script type="module" crossorigin src="/assets/index-Ca5RgeaP.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-DpCJOORK.css">
+    <script type="module" crossorigin src="/assets/index-4i1m0var.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-Ubatk3F8.css">
   </head>
   <body>
     <div id="root"></div>
