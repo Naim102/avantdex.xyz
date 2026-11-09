@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link, NavLink } from 'react-router-dom'
-import { motion } from 'framer-motion'
+import { Link, NavLink, useLocation } from 'react-router-dom'
+import { AnimatePresence, motion } from 'framer-motion'
 import { useAccount, useDisconnect, useSwitchChain } from 'wagmi'
 import { ConnectKitButton } from 'connectkit'
 import { useQuery } from '@tanstack/react-query'
-import { Bell, ChevronDown, Copy, ExternalLink, LogOut, TriangleAlert } from 'lucide-react'
+import { Bell, ChevronDown, Copy, ExternalLink, LogOut, Menu, TriangleAlert, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { Logo } from '@/components/Logo'
 import { CHAIN_ID, useAuth, useConfig, useUsdc } from '@/hooks/useApp'
@@ -13,10 +13,10 @@ import { addrUrl, shortAddr } from '@/lib/format'
 import { fmtUsdc } from '@/lib/exchange'
 
 const NAV = [
-  { to: '/', label: 'Home', short: 'Home', end: true },
-  { to: '/explore', label: 'Explore', short: 'Explore', end: false },
-  { to: '/portfolio', label: 'Portfolio', short: 'Portfolio', end: false },
-  { to: '/list', label: 'Create Listing', short: 'List', end: false },
+  { to: '/', label: 'Home', end: true },
+  { to: '/explore', label: 'Explore', end: false },
+  { to: '/portfolio', label: 'Portfolio', end: false },
+  { to: '/list', label: 'Create Listing', end: false },
 ]
 
 function NavItem({ to, end, id, children }: { to: string; end: boolean; id: string; children: React.ReactNode }) {
@@ -120,15 +120,75 @@ function NotificationBell() {
   )
 }
 
+/** Phones: the four links live behind one menu button, so the header stays a single row. */
+function MobileMenu() {
+  const [open, setOpen] = useState(false)
+  const { pathname } = useLocation()
+  const [lastPath, setLastPath] = useState(pathname)
+  if (lastPath !== pathname) {
+    setLastPath(pathname)
+    setOpen(false)
+  }
+  useEffect(() => {
+    if (!open) return
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false)
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [open])
+  return (
+    <div className="lg:hidden">
+      <button className="btn btn-ghost !min-h-11 !px-3" aria-expanded={open} aria-controls="mobile-nav" aria-label={open ? 'Close menu' : 'Open menu'} onClick={() => setOpen((o) => !o)}>
+        {open ? <X className="size-5" /> : <Menu className="size-5" />}
+      </button>
+      <AnimatePresence>
+        {open && (
+          <>
+            <motion.button
+              key="scrim"
+              aria-label="Close menu"
+              tabIndex={-1}
+              className="fixed inset-x-0 bottom-0 top-[var(--header-h,4.25rem)] z-20 bg-[rgba(20,20,22,0.35)]"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setOpen(false)}
+            />
+            <motion.nav
+              key="panel"
+              id="mobile-nav"
+              aria-label="Main"
+              className="absolute inset-x-0 top-full z-30 border-b border-[var(--line)] bg-[var(--bg)] px-3 pb-3 pt-2 shadow-lg"
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.18 }}
+            >
+              <ul className="mx-auto max-w-6xl space-y-1">
+                {NAV.map((n) => (
+                  <li key={n.to}>
+                    <NavLink to={n.to} end={n.end} className={({ isActive }) => `block rounded-lg px-3.5 py-3 text-base font-semibold ${isActive ? 'bg-[var(--accent)] text-[var(--accent-ink)]' : 'hover:bg-[var(--tint-2)]'}`}>
+                      {n.label}
+                    </NavLink>
+                  </li>
+                ))}
+              </ul>
+            </motion.nav>
+          </>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
 export function Header() {
   return (
     <header className="sticky top-0 z-30 border-b border-[var(--line)] bg-[color-mix(in_srgb,var(--bg)_88%,transparent)] backdrop-blur-md">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-3 py-3 sm:gap-3 sm:px-4">
         <Link to="/" className="flex items-center gap-2.5" aria-label="Avantdex home">
           <Logo className="size-9 sm:size-10" />
-          <span className="display text-lg sm:text-xl">Avantdex</span>
+          <span className="display text-lg max-[359px]:hidden sm:text-xl">Avantdex</span>
         </Link>
-        <nav className="no-scrollbar hidden gap-1 overflow-x-auto lg:flex" aria-label="Main">
+        <nav className="hidden gap-1 lg:flex" aria-label="Main">
           {NAV.map((n) => (
             <NavItem key={n.to} to={n.to} end={n.end} id="nav-desktop">
               {n.label}
@@ -148,15 +208,9 @@ export function Header() {
               )
             }
           </ConnectKitButton.Custom>
+          <MobileMenu />
         </div>
       </div>
-      <nav className="grid grid-cols-4 gap-1 px-3 pb-2.5 sm:flex sm:justify-center lg:hidden" aria-label="Main">
-        {NAV.map((n) => (
-          <NavItem key={n.to} to={n.to} end={n.end} id="nav-mobile">
-            {n.short}
-          </NavItem>
-        ))}
-      </nav>
     </header>
   )
 }

@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { motion, useReducedMotion, useScroll, useTransform } from 'framer-motion'
 import { Reveal } from '@/components/Reveal'
 import { ThreeCanvas } from '@/components/three/ThreeCanvas'
-import { buildPyramid, landscapeBuilder, type Tower } from '@/components/three/scenes'
+import { buildPyramid } from '@/components/three/scenes'
 import { Logo } from '@/components/Logo'
 import { api, type Market } from '@/lib/api'
 import { fmtUsdc, fmtLotsAsTokens, fmtPricePerToken } from '@/lib/exchange'
@@ -71,44 +71,72 @@ function LatestTrades() {
   )
 }
 
-/** Buy-side and sell-side liquidity of every market as towers; the view turns while the section scrolls by. */
-export function LiquiditySection({ markets }: { markets: Market[] }) {
-  const reduce = useReducedMotion() ?? false
-  const ref = useRef<HTMLElement>(null)
-  const { scrollYProgress } = useScroll({ target: ref, offset: ['start end', 'end start'] })
-  const towers: Tower[] = useMemo(
-    () => markets.slice(0, 8).map((m) => ({ symbol: m.project?.token_symbol ?? `#${m.onchain_id}`, bid: Number(m.stats.bid_depth ?? 0) / 1e6, ask: Number(m.stats.ask_depth ?? 0) / 1e6 })),
-    [markets],
+/** Buy-side and sell-side liquidity per market as a plain two-sided bar chart, all on one scale. */
+function LiquidityChart({ markets }: { markets: Market[] }) {
+  const reduce = useReducedMotion()
+  const rows = markets
+    .map((m) => ({ m, bid: Number(m.stats.bid_depth ?? 0) / 1e6, ask: Number(m.stats.ask_depth ?? 0) / 1e6 }))
+    .filter((r) => r.bid + r.ask > 0)
+    .sort((a, b) => b.bid + b.ask - (a.bid + a.ask))
+    .slice(0, 8)
+  const max = Math.max(...rows.flatMap((r) => [r.bid, r.ask]), 0)
+  if (rows.length === 0) {
+    return <div className="glass flex h-60 items-center justify-center p-6 text-center text-sm font-medium text-[var(--muted)]">No resting orders yet, so there is nothing to draw. Orders placed on any market appear here.</div>
+  }
+  const bar = (pct: number, side: 'bid' | 'ask') => (
+    <motion.div
+      className={`absolute top-0 h-full ${side === 'bid' ? 'right-1/2 rounded-l-sm bg-[var(--success)]' : 'left-1/2 rounded-r-sm bg-[var(--danger)]'}`}
+      initial={reduce ? false : { width: 0 }}
+      whileInView={{ width: `${pct / 2}%` }}
+      viewport={{ once: true, margin: '0px 0px -10% 0px' }}
+      transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+      style={reduce ? { width: `${pct / 2}%` } : undefined}
+    />
   )
-  const key = JSON.stringify(towers)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const build = useMemo(() => landscapeBuilder(towers), [key])
-  const empty = towers.length === 0 || towers.every((t) => t.bid === 0 && t.ask === 0)
-  const tallest = Math.max(...towers.flatMap((t) => [t.bid, t.ask]), 0)
   return (
-    <section ref={ref} className="grid gap-6 lg:grid-cols-[1.6fr_1fr]" aria-labelledby="liq-h">
+    <div className="glass p-4 sm:p-5">
+      <div className="flex items-center justify-between gap-3 text-xs font-semibold text-[var(--muted)]">
+        <span className="flex items-center gap-1.5"><span className="size-2.5 rounded-sm bg-[var(--success)]" aria-hidden="true" /> Buy side (USDC waiting to buy)</span>
+        <span className="flex items-center gap-1.5">Sell side (USDC value offered) <span className="size-2.5 rounded-sm bg-[var(--danger)]" aria-hidden="true" /></span>
+      </div>
+      <ul className="mt-3 divide-y divide-[var(--hair)]">
+        {rows.map(({ m, bid, ask }) => (
+          <li key={m.id}>
+            <Link to={`/market/${m.slug ?? m.onchain_id}`} className="block rounded-md px-1 py-3 transition-colors hover:bg-[var(--tint)]">
+              <div className="flex items-baseline justify-between gap-3">
+                <span className="truncate text-sm font-semibold">{m.project?.name ?? `Market #${m.onchain_id}`} <span className="mono text-xs font-medium text-[var(--muted)]">{m.project?.token_symbol}</span></span>
+                <span className="tabular-nums whitespace-nowrap text-xs text-[var(--muted)]">
+                  <span className="text-[var(--success)]">{fmtUsdc(String(Math.round(bid * 1e6)))}</span> | <span className="text-[var(--danger)]">{fmtUsdc(String(Math.round(ask * 1e6)))}</span>
+                </span>
+              </div>
+              <div className="relative mt-2 h-2.5 rounded-sm bg-[var(--tint)]" role="img" aria-label={`Buy side ${bid.toFixed(2)} USDC, sell side ${ask.toFixed(2)} USDC`}>
+                {bar(max ? (bid / max) * 100 : 0, 'bid')}
+                {bar(max ? (ask / max) * 100 : 0, 'ask')}
+                <span className="absolute inset-y-[-3px] left-1/2 w-px bg-[var(--line-strong)]" aria-hidden="true" />
+              </div>
+            </Link>
+          </li>
+        ))}
+      </ul>
+      <p className="mt-2 text-xs text-[var(--muted)]">Longest bar: {fmtUsdc(String(Math.round(max * 1e6)))} USDC. Every market uses the same scale.</p>
+    </div>
+  )
+}
+
+/** Where the resting liquidity sits, next to the latest matched trades. */
+export function LiquiditySection({ markets }: { markets: Market[] }) {
+  return (
+    <section className="grid gap-6 lg:grid-cols-[1.6fr_1fr]" aria-labelledby="liq-h">
       <div className="space-y-4">
         <div>
           <h2 id="liq-h" className="display text-3xl">Where the liquidity sits</h2>
           <p className="mt-1 max-w-xl text-sm font-medium text-[var(--muted)]">
-            One pair of towers per market. Green is USDC waiting to buy, red is USDC worth of tokens offered for sale, all on one scale. Scroll and the view turns.
+            Resting orders on each side of every market. Funds behind these orders are already locked in escrow.
           </p>
         </div>
-        <div className="glass relative h-[22rem] overflow-hidden sm:h-[26rem]">
-          {empty ? (
-            <div className="flex h-full items-center justify-center p-6 text-center text-sm font-medium text-[var(--muted)]">No resting orders yet, so there is nothing to draw. Orders placed on any market appear here.</div>
-          ) : (
-            <ThreeCanvas
-              build={build}
-              progress={scrollYProgress}
-              reducedMotion={reduce}
-              label={`Liquidity towers for ${towers.length} markets. ${towers.map((t) => `${t.symbol}: buy ${t.bid.toFixed(2)}, sell ${t.ask.toFixed(2)} USDC`).join('; ')}.`}
-              className="absolute inset-0"
-              fallback={<p className="p-6 text-sm text-[var(--muted)]">3D view is not available in this browser. The numbers are in the market board above.</p>}
-            />
-          )}
-          {!empty && <p className="pointer-events-none absolute bottom-3 right-4 text-xs font-bold text-[var(--muted)]">Tallest tower: {fmtUsdc(String(Math.round(tallest * 1e6)))} USDC</p>}
-        </div>
+        <Reveal>
+          <LiquidityChart markets={markets} />
+        </Reveal>
       </div>
       <Reveal className="self-end">
         <LatestTrades />

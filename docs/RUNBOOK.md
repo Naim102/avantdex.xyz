@@ -41,6 +41,10 @@ Create a **Docker Compose** resource from this repo (branch `main`, file `docker
 
 After changing frontend code: `bun run build:static`, commit `deploy/dist`, redeploy.
 
+## Moving to a new contract deployment
+
+A new `AvantdexExchange` has a new address and its own empty state. To switch an existing server: (1) deploy with `ADMIN_ADDRESS=<your dashboard admin wallet> ./scripts/deploy-testnet.sh`; (2) set `EXCHANGE_ADDRESS` and `EXCHANGE_DEPLOY_BLOCK` from the output in Coolify; (3) point `DATABASE_URL` at a **new, empty database** (or drop the old one: the indexer refuses a database that indexed a different contract); (4) redeploy and open `/api/health` until it reports `"status":"ok"`. Projects, badges and audit logs live only in PostgreSQL, so a new database starts without them: re-add projects from Admin -> Applications -> Add a project. The latest deployment is recorded in `deployments/arc-testnet.json`, the previous one in `deployments/arc-testnet-previous.json`.
+
 ## Admin controls (super admin)
 
 Every admin wallet has every control in `/admin`: Applications (approve, reject, **Add a project**, **Edit**, **Delete** a project that has no market on-chain), Verification badges, Approved projects, market drafts, **Hide from site / Show on site** for a market (off-chain visibility only; orders, settlement and refunds are untouched), settlement, disputes, users, admins, audit logs and settings. The only things an admin cannot do are the on-chain ones that need a role on the contract: creating, activating, suspending and settling a market needs `MARKET_MANAGER` on the signing wallet, and changing the fee collector needs `DEFAULT_ADMIN`. Grant the first from **Admin -> Admins -> On-chain access** while connected as the contract admin.

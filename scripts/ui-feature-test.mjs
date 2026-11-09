@@ -76,12 +76,13 @@ const admin = await session(ADMIN)
 const visitor = await session('0x0000000000000000000000000000000000000001')
 
 // ============================================================ public
-await test('home: board lists the demo markets, ledger and 3D canvases render', async () => {
+await test('home: board lists the demo markets; the 3D hero and the liquidity chart render', async () => {
   await visitor.goto(BASE + '/', { waitUntil: 'networkidle2' })
   await sleep(2500)
-  const info = await visitor.evaluate(() => ({ rows: document.querySelectorAll('table tbody tr').length, canvases: document.querySelectorAll('canvas').length, ledger: document.querySelector('#ledger-h')?.textContent }))
+  const info = await visitor.evaluate(() => ({ rows: document.querySelectorAll('table tbody tr').length, canvases: document.querySelectorAll('canvas').length, bars: document.querySelectorAll('#liq-h ~ * [role=img], section[aria-labelledby=liq-h] [role=img]').length }))
   if (info.rows < 6) throw new Error('board rows ' + info.rows)
-  if (info.canvases < 2) throw new Error('canvases ' + info.canvases)
+  if (info.canvases < 1) throw new Error('canvases ' + info.canvases)
+  if (info.bars < 6) throw new Error('liquidity bars ' + info.bars)
   if (visitor.errors.length) throw new Error('page errors: ' + visitor.errors[0])
 })
 await test('home: search goes to explore with the query and filters', async () => {
@@ -318,6 +319,17 @@ await test('settlement: seller defaults, buyer claims payment plus collateral af
   await sleep(2500)
   await mustClick(buyer, /^Claim default$/)
   await waitFor(async () => (await get(`/portfolio/${TRADER.toLowerCase()}/trades`)).items.some((t) => t.market_onchain_id === 3 && t.status === 'Defaulted'), 'default recorded', 40000)
+})
+await test('mobile: single-row header, menu opens, navigates and closes', async () => {
+  const m = await session(ADMIN, 0, 375, 800)
+  await m.goto(BASE + '/', { waitUntil: 'networkidle2' })
+  await sleep(1200)
+  const h = await m.evaluate(() => ({ rows: document.querySelector('header > div').getBoundingClientRect().height, navs: document.querySelectorAll('header nav:not(#mobile-nav)').length }))
+  if (h.rows > 80) throw new Error('header is taller than one row: ' + h.rows)
+  await m.click('button[aria-label="Open menu"]')
+  await waitFor(() => m.evaluate(() => !!document.querySelector('#mobile-nav')), 'menu open', 5000)
+  await m.click('#mobile-nav a[href="/explore"]')
+  await waitFor(() => m.evaluate(() => location.pathname === '/explore' && !document.querySelector('#mobile-nav')), 'navigated and closed', 5000)
 })
 await test('mobile: home, explore, market and admin have no sideways overflow', async () => {
   const m = await session(ADMIN, 0, 375, 800)

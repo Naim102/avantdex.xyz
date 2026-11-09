@@ -78,7 +78,7 @@ Backend tests (PostgreSQL + a local chain), see [docs/RUNBOOK.md](docs/RUNBOOK.m
 
 ## Deployed on Arc Testnet
 
-AvantdexExchange `0x125ca669F4d42Dc09A0C435B721bD8089602e31d` ([explorer](https://explorer.testnet.arc.io/address/0x125ca669F4d42Dc09A0C435B721bD8089602e31d)). A full lifecycle (project, market, trade, atomic settlement, fees to the collector, completion) was run against it with real Arc USDC; see `scripts/testnet_e2e.py`.
+AvantdexExchange `0xB927b9C0BCE68e1426d89731a1E1D53d1D2BE9cb` ([explorer](https://explorer.testnet.arc.io/address/0xB927b9C0BCE68e1426d89731a1E1D53d1D2BE9cb)). The same lifecycle (project, market, trade, atomic settlement, fees to the collector, completion) was run on the previous deployment (`deployments/arc-testnet-previous.json`) with real Arc USDC; see `scripts/testnet_e2e.py`. The current deployment's runtime code matches the local build (only the USDC immutable differs).
 
 ## Deploy
 

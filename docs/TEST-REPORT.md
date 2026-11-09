@@ -6,7 +6,8 @@ Run on 2026-11-10 against the local dev stack (anvil with Arc Testnet's chain id
 |---|---|
 | Contracts (`forge test`, unit, fuzz and invariants) | 104 passed |
 | Backend (`pytest`, includes chain integration) | 58 passed |
-| UI feature test (`scripts/ui-feature-test.mjs`, headless Chrome), run again after the soft redesign | 23 of 23 passed |
+| UI feature test (`scripts/ui-feature-test.mjs`, headless Chrome), final run on a fresh stack | 24 of 24 passed |
+| New contract on Arc Testnet (`0xB927…E9cb`): roles, fee constants, runtime code vs local build, and the production compose stack indexing it with lag 0 | verified |
 | Typecheck (`tsc`) and lint (`oxlint --type-aware`) | clean |
 
 ## UI feature test, step by step
@@ -19,7 +20,7 @@ Run on 2026-11-10 against the local dev stack (anvil with Arc Testnet's chain id
 
 **Settlement:** open settlement on a market, the seller approves the token and settles, the trade shows Settled and the fee collector total rises; on another market the seller does not deliver, the chain clock is moved past the deadline, and the buyer claims the default (status Defaulted).
 
-**Phone width (375 px):** home, explore, market and listing pages have no sideways overflow.
+**Phone width (375 px):** single-row header with a menu that opens, navigates and closes;  home, explore, market and listing pages have no sideways overflow.
 
 ## Not covered
 
