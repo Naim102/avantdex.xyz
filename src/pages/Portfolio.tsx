@@ -39,10 +39,10 @@ interface Summary {
   claimable: string
 }
 
-function Card({ label, value, sub, color }: { label: string; value: string; sub?: string; color?: string }) {
+function Card({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
-    <div className="glass rounded-3xl p-4 sm:p-5" style={color ? { background: color, color: '#262627' } : undefined}>
-      <div className="label" style={color ? { color: '#262627' } : undefined}>{label}</div>
+    <div className="glass p-4 sm:p-5">
+      <div className="label">{label}</div>
       <div className="display text-3xl tabular-nums">{value}</div>
       {sub && <div className="mt-1 text-xs font-semibold opacity-80">{sub}</div>}
     </div>
@@ -280,10 +280,10 @@ export default function Portfolio() {
             {tab === 'Overview' && (
               <div className="space-y-4">
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  <Card label="USDC balance" value={balance === undefined ? '…' : `${fmtUsdc(balance)}`} sub="In your wallet" color="#28DF99" />
-                  <Card label="Locked in open orders" value={fmtUsdc(summaryQ.data?.locked_in_orders ?? '0')} sub={`${summaryQ.data?.open_orders ?? 0} open order(s)`} color="#FFD84D" />
+                  <Card label="USDC balance" value={balance === undefined ? '…' : `${fmtUsdc(balance)}`} sub="In your wallet" />
+                  <Card label="Locked in open orders" value={fmtUsdc(summaryQ.data?.locked_in_orders ?? '0')} sub={`${summaryQ.data?.open_orders ?? 0} open order(s)`} />
                   <Card label="Locked in trades" value={fmtUsdc(summaryQ.data?.locked_in_trades ?? '0')} sub={`${summaryQ.data?.open_trades ?? 0} open trade(s) awaiting settlement`} />
-                  <Card label="Claimable" value={fmtUsdc(claimable)} sub="USDC that could not be sent automatically" color={claimable > 0n ? "#FF9C8F" : undefined} />
+                  <Card label="Claimable" value={fmtUsdc(claimable)} sub="USDC that could not be sent automatically" />
                 </div>
                 {claimable > 0n && (
                   <div className="glass space-y-3 rounded-3xl p-4 sm:p-5">

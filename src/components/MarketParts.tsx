@@ -4,10 +4,10 @@ const SWATCHES = ['#28DF99', '#FFD84D', '#FF9C8F', '#8FD3FF', '#C9B6FF']
 
 /** Project logo, or a flat colored initial when the project has none. */
 export function ProjectLogo({ name, url, size = 'size-12' }: { name: string; url?: string; size?: string }) {
-  if (url) return <img src={url} alt="" className={`${size} shrink-0 rounded-xl border-2 border-[var(--line)] object-cover`} loading="lazy" referrerPolicy="no-referrer" />
+  if (url) return <img src={url} alt="" className={`${size} shrink-0 rounded-xl border border-[var(--line)] object-cover`} loading="lazy" referrerPolicy="no-referrer" />
   const bg = SWATCHES[[...name].reduce((n, c) => n + c.charCodeAt(0), 0) % SWATCHES.length]
   return (
-    <div className={`${size} display flex shrink-0 items-center justify-center rounded-xl border-2 border-[var(--line)] text-lg text-[#262627]`} style={{ background: bg }} aria-hidden="true">
+    <div className={`${size} display flex shrink-0 items-center justify-center rounded-xl border border-[var(--line)] text-lg text-[#262627]`} style={{ background: bg }} aria-hidden="true">
       {name.slice(0, 1).toUpperCase()}
     </div>
   )

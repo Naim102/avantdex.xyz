@@ -36,8 +36,8 @@ export const buildPyramid: SceneBuilder = (THREE: ThreeLib): SceneApi => {
     slabs.length = 0
     const accent = themeColor('--accent', '#28df99')
     const surface = themeColor('--surface', '#ffffff')
-    const line = themeColor('--line', '#262627')
-    const base = new THREE.Mesh(new THREE.BoxGeometry(6.6, 0.16, 6.6), new THREE.MeshBasicMaterial({ color: line }))
+    const line = themeColor('--ink', '#262627')
+    const base = new THREE.Mesh(new THREE.BoxGeometry(6.6, 0.16, 6.6), new THREE.MeshBasicMaterial({ color: themeColor('--line-strong', '#bdbbb0') }))
     base.position.y = -0.1
     root.add(base)
     for (let i = 0; i < LAYERS; i++) {
@@ -60,6 +60,8 @@ export const buildPyramid: SceneBuilder = (THREE: ThreeLib): SceneApi => {
     scene,
     camera,
     update(p, pointer) {
+      // tall, narrow canvases (phones) need the camera further back to keep the whole stack in frame
+      camera.position.z = 15.5 / Math.min(1, camera.aspect * 0.95 + 0.15)
       root.rotation.y = 0.7 + p * Math.PI * 1.6 + pointer.x * 0.35
       root.rotation.x = pointer.y * 0.06
       slabs.forEach((s, i) => {
@@ -117,14 +119,14 @@ export function landscapeBuilder(towers: Tower[]): SceneBuilder {
       disposeGroup(root)
       const bidC = themeColor('--success', '#08774c')
       const askC = themeColor('--danger', '#b42318')
-      const line = themeColor('--line', '#262627')
+      const line = themeColor('--ink', '#262627')
       const ink = themeColor('--ink', '#262627')
       const floor = themeColor('--bg-2', '#ebe7da')
       const width = cols * SPAN + 1.2
       const plate = new THREE.Mesh(new THREE.BoxGeometry(width, 0.14, rows * ROWGAP + 0.4), new THREE.MeshBasicMaterial({ color: floor }))
       plate.position.y = -0.08
       root.add(plate)
-      root.add(new THREE.LineSegments(new THREE.EdgesGeometry(plate.geometry), new THREE.LineBasicMaterial({ color: line })).translateY(-0.08))
+      root.add(new THREE.LineSegments(new THREE.EdgesGeometry(plate.geometry), new THREE.LineBasicMaterial({ color: themeColor('--line-strong', '#bdbbb0') })).translateY(-0.08))
       towers.forEach((t, i) => {
         const row = Math.floor(i / cols)
         const col = i % cols

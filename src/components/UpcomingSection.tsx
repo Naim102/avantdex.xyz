@@ -12,7 +12,7 @@ export function useUpcoming() {
 
 function UpcomingCard({ p }: { p: Upcoming }) {
   return (
-    <article className="glass flex flex-col gap-3 p-4 sm:p-5">
+    <article className="glass hoverable flex flex-col gap-3 p-4 sm:p-5">
       <div className="flex items-start gap-3">
         <ProjectLogo name={p.name} url={p.logo_url} />
         <div className="min-w-0 flex-1">
@@ -25,7 +25,7 @@ function UpcomingCard({ p }: { p: Upcoming }) {
       </div>
       <BadgeRow badges={p.badges} compact />
       {p.description && <p className="line-clamp-3 text-pretty text-sm font-medium text-[var(--muted)]">{p.description}</p>}
-      <div className="mt-auto flex flex-wrap items-center justify-between gap-2 border-t-2 border-dashed border-[var(--hair)] pt-3 text-sm">
+      <div className="mt-auto flex flex-wrap items-center justify-between gap-2 border-t border-dashed border-[var(--hair)] pt-3 text-sm">
         <span className="font-bold text-[var(--subtle)]">TGE {fmtDay(p.tge_date)}</span>
         <span className="font-bold text-[var(--muted)]">Trading not open yet</span>
       </div>

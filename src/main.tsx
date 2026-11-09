@@ -34,7 +34,7 @@ function ThemedShell() {
       <Toaster
         position="top-center"
         theme={dark ? 'dark' : 'light'}
-        toastOptions={{ style: { border: '2px solid var(--line)', borderRadius: 'var(--r-md)', background: 'var(--surface)', color: 'var(--ink)', boxShadow: 'var(--shadow-sm)', fontWeight: 600 } }}
+        toastOptions={{ style: { border: '1px solid var(--line)', borderRadius: 'var(--r-md)', background: 'var(--surface)', color: 'var(--ink)', boxShadow: 'var(--shadow-sm)', fontWeight: 600 } }}
       />
     </ConnectKitProvider>
   )

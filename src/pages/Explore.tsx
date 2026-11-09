@@ -100,7 +100,7 @@ export default function Explore() {
             <p className="text-sm font-medium text-[var(--muted)]" aria-live="polite">
               {items.length} market{items.length === 1 ? '' : 's'}
             </p>
-            <div className="flex gap-1 rounded-lg border-2 border-[var(--line)] bg-[var(--surface)] p-1" role="group" aria-label="Layout">
+            <div className="flex gap-1 rounded-lg border border-[var(--line)] bg-[var(--surface)] p-1" role="group" aria-label="Layout">
               {([['board', 'Board'], ['cards', 'Cards']] as const).map(([v, l]) => (
                 <button key={v} aria-pressed={view === v} onClick={() => set('view', v === 'board' ? '' : v)} className={`rounded-md px-3 py-1.5 text-sm font-bold ${view === v ? 'bg-[var(--ink)] text-[var(--bg)]' : 'hover:bg-[var(--tint-2)]'}`}>
                   {l}

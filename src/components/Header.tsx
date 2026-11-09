@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, NavLink } from 'react-router-dom'
+import { motion } from 'framer-motion'
 import { useAccount, useDisconnect, useSwitchChain } from 'wagmi'
 import { ConnectKitButton } from 'connectkit'
 import { useQuery } from '@tanstack/react-query'
@@ -18,10 +19,18 @@ const NAV = [
   { to: '/list', label: 'Create Listing', short: 'List', end: false },
 ]
 
-const navClass = ({ isActive }: { isActive: boolean }) =>
-  `whitespace-nowrap rounded-lg border-2 px-3.5 py-1.5 text-sm font-bold transition-colors ${
-    isActive ? 'border-[var(--line)] bg-[var(--accent)] text-[var(--accent-ink)]' : 'border-transparent text-[var(--ink)] hover:border-[var(--line)] hover:bg-[var(--surface)]'
-  }`
+function NavItem({ to, end, id, children }: { to: string; end: boolean; id: string; children: React.ReactNode }) {
+  return (
+    <NavLink to={to} end={end} className={({ isActive }) => `relative whitespace-nowrap rounded-lg px-3.5 py-1.5 text-center text-sm font-semibold transition-colors ${isActive ? 'text-[var(--accent-ink)]' : 'text-[var(--ink)] hover:bg-[var(--tint-2)]'}`}>
+      {({ isActive }) => (
+        <>
+          {isActive && <motion.span layoutId={id} className="absolute inset-0 rounded-lg bg-[var(--accent)]" transition={{ type: 'spring', stiffness: 420, damping: 34 }} />}
+          <span className="relative">{children}</span>
+        </>
+      )}
+    </NavLink>
+  )
+}
 
 function AccountMenu({ address }: { address: string }) {
   const [open, setOpen] = useState(false)
@@ -106,24 +115,24 @@ function NotificationBell() {
   return (
     <Link to="/portfolio?tab=Notifications" className="btn btn-ghost relative !min-h-11 !px-3" aria-label={`Notifications${data?.unread ? `, ${data.unread} unread` : ''}`}>
       <Bell className="size-4" />
-      {!!data?.unread && <span className="absolute -right-2 -top-2 rounded-full border-2 border-[var(--line)] bg-[var(--accent)] px-1.5 text-[10px] font-extrabold text-[var(--accent-ink)]">{data.unread}</span>}
+      {!!data?.unread && <span className="absolute -right-2 -top-2 rounded-full border border-[var(--line)] bg-[var(--accent)] px-1.5 text-[10px] font-bold text-[var(--accent-ink)]">{data.unread}</span>}
     </Link>
   )
 }
 
 export function Header() {
   return (
-    <header className="sticky top-0 z-30 border-b-2 border-[var(--line)] bg-[var(--bg)]">
+    <header className="sticky top-0 z-30 border-b border-[var(--line)] bg-[color-mix(in_srgb,var(--bg)_88%,transparent)] backdrop-blur-md">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-3 py-3 sm:gap-3 sm:px-4">
         <Link to="/" className="flex items-center gap-2.5" aria-label="Avantdex home">
           <Logo className="size-9 sm:size-10" />
-          <span className="display text-lg font-bold uppercase tracking-tight sm:text-xl">Avantdex</span>
+          <span className="display text-lg sm:text-xl">Avantdex</span>
         </Link>
         <nav className="no-scrollbar hidden gap-1 overflow-x-auto lg:flex" aria-label="Main">
           {NAV.map((n) => (
-            <NavLink key={n.to} to={n.to} end={n.end} className={navClass}>
+            <NavItem key={n.to} to={n.to} end={n.end} id="nav-desktop">
               {n.label}
-            </NavLink>
+            </NavItem>
           ))}
         </nav>
         <div className="flex items-center gap-1.5 sm:gap-2">
@@ -143,9 +152,9 @@ export function Header() {
       </div>
       <nav className="grid grid-cols-4 gap-1 px-3 pb-2.5 sm:flex sm:justify-center lg:hidden" aria-label="Main">
         {NAV.map((n) => (
-          <NavLink key={n.to} to={n.to} end={n.end} className={(st) => `${navClass(st)} text-center !px-2 sm:!px-3.5`}>
+          <NavItem key={n.to} to={n.to} end={n.end} id="nav-mobile">
             {n.short}
-          </NavLink>
+          </NavItem>
         ))}
       </nav>
     </header>
@@ -156,7 +165,7 @@ export function NetworkBanner() {
   const { isConnected, chainId } = useAccount()
   const { switchChain, isPending } = useSwitchChain()
   const { data: cfg, isError } = useConfig()
-  const bar = 'border-b-2 border-[var(--line)] px-4 py-2 text-center text-sm font-bold'
+  const bar = 'border-b border-[var(--line)] px-4 py-2 text-center text-sm font-bold'
   if (isError) {
     return (
       <div className={`${bar} bg-[var(--danger-bg)] text-[var(--danger)]`} role="alert">

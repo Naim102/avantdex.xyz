@@ -1,4 +1,5 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useId, useState, type ReactNode } from 'react'
+import { motion } from 'framer-motion'
 import { ExternalLink, Info, Loader2, ShieldCheck, TriangleAlert, Check, X } from 'lucide-react'
 import { BADGE_INFO, txUrl, shortAddr } from '@/lib/format'
 import type { Badge } from '@/lib/api'
@@ -28,7 +29,7 @@ export function Notice({ tone = 'info', children }: { tone?: Tone; children: Rea
   const t = TONES[tone]
   const Icon = tone === 'error' || tone === 'warn' ? TriangleAlert : tone === 'ok' ? Check : Info
   return (
-    <div role={tone === 'error' ? 'alert' : 'note'} className="flex gap-2.5 rounded-2xl border-2 border-[var(--line)] px-3.5 py-3 text-sm font-medium" style={{ color: t.c, background: t.bg }}>
+    <div role={tone === 'error' ? 'alert' : 'note'} className="flex gap-2.5 rounded-2xl border border-[var(--line)] px-3.5 py-3 text-sm font-medium" style={{ color: t.c, background: t.bg }}>
       <Icon className="mt-0.5 size-4 shrink-0" />
       <div className="min-w-0 text-pretty">{children}</div>
     </div>
@@ -80,7 +81,7 @@ export function PageTitle({ title, subtitle, right }: { title: string; subtitle?
   return (
     <div className="flex flex-wrap items-end justify-between gap-3">
       <div>
-        <h1 className="display text-balance break-words text-[1.75rem] leading-none sm:text-5xl">{title}</h1>
+        <h1 className="display text-balance break-words text-[1.75rem] leading-tight sm:text-4xl">{title}</h1>
         {subtitle && <p className="mt-2 max-w-2xl text-pretty text-sm font-medium text-[var(--muted)] sm:text-base">{subtitle}</p>}
       </div>
       {right}
@@ -89,17 +90,19 @@ export function PageTitle({ title, subtitle, right }: { title: string; subtitle?
 }
 
 export function Tabs<T extends string>({ tabs, value, onChange, label }: { tabs: readonly T[]; value: T; onChange: (t: T) => void; label: string }) {
+  const id = useId()
   return (
-    <div className="no-scrollbar flex gap-1.5 overflow-x-auto rounded-2xl border-2 border-[var(--line)] bg-[var(--surface)] p-1.5" role="tablist" aria-label={label}>
+    <div className="no-scrollbar flex gap-1 overflow-x-auto rounded-xl border border-[var(--line)] bg-[var(--surface)] p-1" role="tablist" aria-label={label}>
       {tabs.map((t) => (
         <button
           key={t}
           role="tab"
           aria-selected={value === t}
           onClick={() => onChange(t)}
-          className={`whitespace-nowrap rounded-lg px-3.5 py-2 text-sm font-bold transition-colors ${value === t ? 'bg-[var(--ink)] text-[var(--bg)]' : 'text-[var(--ink)] hover:bg-[var(--tint-2)]'}`}
+          className={`relative whitespace-nowrap rounded-lg px-3.5 py-2 text-sm font-semibold transition-colors ${value === t ? 'text-[var(--bg)]' : 'text-[var(--ink)] hover:bg-[var(--tint-2)]'}`}
         >
-          {t}
+          {value === t && <motion.span layoutId={`tab-${id}`} className="absolute inset-0 rounded-lg bg-[var(--ink)]" transition={{ type: 'spring', stiffness: 460, damping: 36 }} />}
+          <span className="relative">{t}</span>
         </button>
       ))}
     </div>
@@ -115,17 +118,26 @@ export function Modal({ open, onClose, title, children }: { open: boolean; onClo
   }, [open, onClose])
   if (!open) return null
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-[rgba(38,38,39,0.65)] p-4 sm:items-center" role="dialog" aria-modal="true" aria-label={title} onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="glass w-full max-w-lg rounded-3xl p-4 sm:p-5">
+    <motion.div
+      className="fixed inset-0 z-50 flex items-end justify-center bg-[rgba(20,20,22,0.55)] p-4 backdrop-blur-[2px] sm:items-center"
+      role="dialog"
+      aria-modal="true"
+      aria-label={title}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.18 }}
+      onMouseDown={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <motion.div className="glass lift w-full max-w-lg p-5" initial={{ opacity: 0, y: 16, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}>
         <div className="mb-3 flex items-center justify-between">
           <h2 className="display text-xl">{title}</h2>
-          <button onClick={onClose} aria-label="Close" className="rounded-lg border-2 border-[var(--line)] p-1 hover:bg-[var(--tint-2)]">
+          <button onClick={onClose} aria-label="Close" className="rounded-lg border border-[var(--line)] p-1 transition-colors hover:bg-[var(--tint-2)]">
             <X className="size-5" />
           </button>
         </div>
         {children}
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   )
 }
 
@@ -281,7 +293,7 @@ export function DataTable({ head, rows, empty }: { head: string[]; rows: ReactNo
       <div className="hidden overflow-x-auto sm:block">
         <table className="w-full min-w-[34rem] text-left text-sm">
           <thead>
-            <tr className="border-b-2 border-[var(--line)] text-xs text-[var(--muted)]">
+            <tr className="border-b border-[var(--line)] text-xs text-[var(--muted)]">
               {head.map((h, k) => (
                 <th key={`${h}${k}`} className="px-3 py-2 font-semibold">
                   {h}

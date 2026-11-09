@@ -70,7 +70,7 @@ export function DepthChart({ book, market }: { book: OrderBookData; market: Mark
         </div>
       </div>
       <svg viewBox={`0 0 ${W} ${H}`} className="mt-3 h-auto w-full" role="img" aria-label={`Depth chart. ${fmt(bidTotal)} tokens wanted on the buy side and ${fmt(askTotal)} offered on the sell side, between ${fmt(rawLo)} and ${fmt(rawHi)} USDC per token.`}>
-        <line x1={PAD.l} x2={W - PAD.r} y1={base} y2={base} stroke="var(--line)" strokeWidth="2" />
+        <line x1={PAD.l} x2={W - PAD.r} y1={base} y2={base} stroke="var(--line-strong)" strokeWidth="1.5" />
         {[0.5, 1].map((f) => (
           <line key={f} x1={PAD.l} x2={W - PAD.r} y1={y(maxSize * f)} y2={y(maxSize * f)} stroke="var(--hair)" strokeWidth="1" strokeDasharray="4 4" />
         ))}

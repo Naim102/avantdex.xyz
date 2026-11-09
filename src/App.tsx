@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { motion, useReducedMotion } from 'framer-motion'
+import { motion, useReducedMotion, useScroll, useSpring } from 'framer-motion'
 import { BrowserRouter, Link, Route, Routes, useLocation } from 'react-router-dom'
 import { Header, NetworkBanner } from '@/components/Header'
 import Home from '@/pages/Home'
@@ -23,6 +23,15 @@ function ScrollTop() {
   return null
 }
 
+/** A thin bar at the top of the window that fills as the page scrolls. */
+function ScrollProgress() {
+  const reduce = useReducedMotion()
+  const { scrollYProgress } = useScroll()
+  const scaleX = useSpring(scrollYProgress, { stiffness: 140, damping: 28, mass: 0.4 })
+  if (reduce) return null
+  return <motion.div aria-hidden="true" className="fixed inset-x-0 top-0 z-[60] h-[3px] origin-left bg-[var(--accent)]" style={{ scaleX }} />
+}
+
 /** Every route change fades and slides the new page in. Static for people who prefer reduced motion. */
 function PageFrame({ children }: { children: React.ReactNode }) {
   const { pathname } = useLocation()
@@ -40,6 +49,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <ScrollTop />
+      <ScrollProgress />
       <div className="min-h-dvh">
         <Header />
         <NetworkBanner />

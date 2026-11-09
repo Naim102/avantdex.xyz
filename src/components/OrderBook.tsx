@@ -25,7 +25,7 @@ export function OrderBook({ book, market, myPrices, onPick }: { book?: OrderBook
   const empty = book.asks.length === 0 && book.bids.length === 0
   return (
     <div className="glass overflow-hidden rounded-3xl">
-      <div className="grid grid-cols-3 gap-2 border-b-2 border-[var(--line)] px-3 py-2.5 text-xs font-semibold text-[var(--subtle)]">
+      <div className="grid grid-cols-3 gap-2 border-b border-[var(--line)] px-3 py-2.5 text-xs font-semibold text-[var(--subtle)]">
         <span>Price (USDC)</span>
         <span className="text-right">Size ({market.project?.token_symbol ?? 'tokens'})</span>
         <span className="text-right">Total</span>

@@ -26,7 +26,7 @@ const link = 'underline-offset-4 hover:text-[var(--accent-text)] hover:underline
 export function Footer() {
   const { data: cfg } = useConfig()
   return (
-    <footer className="mt-12 border-t-2 border-[var(--line)] bg-[var(--surface)]">
+    <footer className="mt-12 border-t border-[var(--line)] bg-[var(--surface)]">
       <div className="mx-auto grid max-w-6xl gap-10 px-3 py-10 sm:px-4 lg:grid-cols-[1.3fr_1fr_1fr_1.2fr]">
         <div className="space-y-4">
           <Link to="/" className="inline-flex items-center gap-2.5" aria-label="Avantdex home">
@@ -41,7 +41,7 @@ export function Footer() {
         </div>
 
         <nav aria-label="Trade" className="space-y-3">
-          <h2 className="text-sm font-extrabold">Trade</h2>
+          <h2 className="text-sm font-bold">Trade</h2>
           <ul className="space-y-2 text-sm font-medium">
             {TRADE.map(([to, label]) => (
               <li key={to}>
@@ -52,7 +52,7 @@ export function Footer() {
         </nav>
 
         <nav aria-label="Legal" className="space-y-3">
-          <h2 className="text-sm font-extrabold">Legal</h2>
+          <h2 className="text-sm font-bold">Legal</h2>
           <ul className="space-y-2 text-sm font-medium">
             {LEGAL.map(([k, label]) => (
               <li key={k}>
@@ -63,7 +63,7 @@ export function Footer() {
         </nav>
 
         <div className="space-y-3">
-          <h2 className="text-sm font-extrabold">On-chain facts</h2>
+          <h2 className="text-sm font-bold">On-chain facts</h2>
           <dl className="space-y-2 text-sm">
             <div>
               <dt className="text-xs font-bold text-[var(--muted)]">Network</dt>
@@ -85,7 +85,7 @@ export function Footer() {
           </dl>
         </div>
       </div>
-      <div className="border-t-2 border-[var(--hair)]">
+      <div className="border-t border-[var(--hair)]">
         <p className="mx-auto max-w-6xl px-3 py-4 text-xs font-medium text-[var(--muted)] sm:px-4">
           Testnet software, <b>not audited</b>. Tokens and pre-market positions are not investment advice and carry significant risk. Verification badges do not imply safety or guaranteed delivery.
         </p>

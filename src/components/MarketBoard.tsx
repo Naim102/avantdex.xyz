@@ -27,7 +27,7 @@ export function MarketBoard({ markets }: { markets: Market[] }) {
       <div className="glass hidden overflow-x-auto md:block">
         <table className="w-full text-left text-sm">
           <thead>
-            <tr className="border-b-2 border-[var(--line)] text-xs text-[var(--muted)]">
+            <tr className="border-b border-[var(--line)] text-xs text-[var(--muted)]">
               {['Token', 'Last price', 'Best bid', 'Best ask', '24h volume', 'Open interest', 'Liquidity (buy / sell, USDC)', 'TGE', ''].map((h, i) => (
                 <th key={i} className={`px-3 py-2.5 font-bold ${i >= 1 && i <= 5 ? 'text-right' : ''}`}>
                   {h}

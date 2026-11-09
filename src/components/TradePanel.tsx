@@ -131,18 +131,18 @@ export function TradePanel({ market, cfg, initialSide, pick }: { market: Market;
   }
 
   const sideBtn = (s: 'buy' | 'sell') => (
-    <button type="button" onClick={() => setSide(s)} aria-pressed={side === s} className={`flex-1 rounded-lg py-2.5 text-sm font-extrabold transition-colors ${side === s ? (s === 'buy' ? 'bg-[var(--buy)] text-[#262627]' : 'bg-[var(--sell)] text-[#262627]') : 'text-[var(--ink)] hover:bg-[var(--tint-2)]'}`}>
+    <button type="button" onClick={() => setSide(s)} aria-pressed={side === s} className={`flex-1 rounded-lg py-2.5 text-sm font-bold transition-colors ${side === s ? (s === 'buy' ? 'bg-[var(--buy)] text-[#262627]' : 'bg-[var(--sell)] text-[#262627]') : 'text-[var(--ink)] hover:bg-[var(--tint-2)]'}`}>
       {s === 'buy' ? 'Buy' : 'Sell'}
     </button>
   )
 
   return (
     <div className="glass space-y-4 rounded-3xl p-4 sm:p-5">
-      <div className="flex gap-1 rounded-xl border-2 border-[var(--line)] bg-[var(--surface)] p-1" role="group" aria-label="Order side">
+      <div className="flex gap-1 rounded-xl border border-[var(--line)] bg-[var(--surface)] p-1" role="group" aria-label="Order side">
         {sideBtn('buy')}
         {sideBtn('sell')}
       </div>
-      <div className="flex gap-1 rounded-xl border-2 border-[var(--line)] bg-[var(--surface)] p-1" role="group" aria-label="Order type">
+      <div className="flex gap-1 rounded-xl border border-[var(--line)] bg-[var(--surface)] p-1" role="group" aria-label="Order type">
         {(['limit', 'market'] as const).map((t) => (
           <button key={t} type="button" aria-pressed={type === t} onClick={() => setType(t)} className={`flex-1 rounded-lg py-2 text-sm font-bold ${type === t ? 'bg-[var(--ink)] text-[var(--bg)]' : 'text-[var(--ink)] hover:bg-[var(--tint-2)]'}`}>
             {t === 'limit' ? 'Limit' : 'Market'}

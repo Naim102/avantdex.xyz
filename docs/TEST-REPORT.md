@@ -6,7 +6,7 @@ Run on 2026-11-10 against the local dev stack (anvil with Arc Testnet's chain id
 |---|---|
 | Contracts (`forge test`, unit, fuzz and invariants) | 104 passed |
 | Backend (`pytest`, includes chain integration) | 58 passed |
-| UI feature test (`scripts/ui-feature-test.mjs`, headless Chrome) | 23 of 23 passed |
+| UI feature test (`scripts/ui-feature-test.mjs`, headless Chrome), run again after the soft redesign | 23 of 23 passed |
 | Typecheck (`tsc`) and lint (`oxlint --type-aware`) | clean |
 
 ## UI feature test, step by step

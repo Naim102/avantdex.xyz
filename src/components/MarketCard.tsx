@@ -24,7 +24,7 @@ export function MarketCard({ m }: { m: Market }) {
   const name = p?.name ?? `Market #${m.onchain_id}`
   const symbol = p?.token_symbol ?? (m.token_address ? shortAddr(m.token_address) : '')
   return (
-    <article className="glass flex flex-col gap-4 p-4 sm:p-5">
+    <article className="glass hoverable flex flex-col gap-4 p-4 sm:p-5">
       <Link to={`/market/${key}`} className="flex items-start gap-3">
         <ProjectLogo name={name} url={p?.logo_url} />
         <div className="min-w-0 flex-1">
@@ -36,7 +36,7 @@ export function MarketCard({ m }: { m: Market }) {
         </div>
       </Link>
       {p && <BadgeRow badges={p.badges} compact />}
-      <div className="grid grid-cols-2 gap-x-4 gap-y-3 border-y-2 border-[var(--hair)] py-3 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-x-4 gap-y-3 border-y border-[var(--hair)] py-3 sm:grid-cols-3">
         <Stat label="Last price" value={s.last_price ? `${fmtPricePerToken(s.last_price, m)} USDC` : dash} />
         <Stat label="Best bid" value={s.best_bid ? fmtPricePerToken(s.best_bid, m) : dash} tone="up" />
         <Stat label="Best ask" value={s.best_ask ? fmtPricePerToken(s.best_ask, m) : dash} tone="down" />

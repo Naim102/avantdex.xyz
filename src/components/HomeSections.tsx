@@ -18,18 +18,15 @@ export function HeroPyramid() {
   const { scrollY } = useScroll()
   const progress = useTransform(scrollY, [0, 900], [0, 1])
   return (
-    <div>
-      <div className="glass lift relative aspect-[4/3.4] overflow-hidden sm:aspect-[4/3] lg:aspect-auto lg:h-[26rem]">
-        <ThreeCanvas
-          build={buildPyramid}
-          progress={progress}
-          reducedMotion={reduce}
-          label="A striped pyramid, the Avantdex mark, in 3D. It turns as you scroll."
-          className="absolute inset-0"
-          fallback={<div className="flex h-full items-center justify-center"><Logo className="size-24" /></div>}
-        />
-      </div>
-      <p className="mt-3 text-xs font-bold text-[var(--muted)]">Scroll: the stack turns and the layers pull apart, like an order book.</p>
+    <div className="relative h-[20rem] sm:h-[26rem] lg:h-[31rem]">
+      <ThreeCanvas
+        build={buildPyramid}
+        progress={progress}
+        reducedMotion={reduce}
+        label="A striped pyramid, the Avantdex mark, in 3D. It turns as you scroll."
+        className="absolute inset-0"
+        fallback={<div className="flex h-full items-center justify-center"><Logo className="size-24" /></div>}
+      />
     </div>
   )
 }
@@ -145,8 +142,8 @@ export function LifecycleSection() {
           <h2 id="life-h" className="display text-3xl">The life of a trade</h2>
           <p className="max-w-md text-pretty font-medium text-[var(--muted)]">Everything below is enforced by the contract. The team cannot change the rules of a trade that is already open.</p>
           <div className="hidden lg:block" aria-hidden="true">
-            <div className="display text-[9rem] leading-none text-[var(--accent)] [-webkit-text-stroke:3px_var(--line)]">{STEPS[active].n}</div>
-            <div className="mt-2 h-2 w-full max-w-md overflow-hidden rounded-sm border-2 border-[var(--line)]">
+            <div className="display text-[9rem] leading-none text-[var(--accent)] [-webkit-text-stroke:2px_var(--ink)]">{STEPS[active].n}</div>
+            <div className="mt-2 h-2 w-full max-w-md overflow-hidden rounded-sm border border-[var(--line)]">
               <motion.div className="h-full origin-left bg-[var(--accent)]" style={{ scaleX: reduce ? (active + 1) / STEPS.length : bar }} />
             </div>
           </div>
