@@ -41,6 +41,10 @@ Create a **Docker Compose** resource from this repo (branch `main`, file `docker
 
 After changing frontend code: `bun run build:static`, commit `deploy/dist`, redeploy.
 
+## Admin controls (super admin)
+
+Every admin wallet has every control in `/admin`: Applications (approve, reject, **Add a project**, **Edit**, **Delete** a project that has no market on-chain), Verification badges, Approved projects, market drafts, **Hide from site / Show on site** for a market (off-chain visibility only; orders, settlement and refunds are untouched), settlement, disputes, users, admins, audit logs and settings. The only things an admin cannot do are the on-chain ones that need a role on the contract: creating, activating, suspending and settling a market needs `MARKET_MANAGER` on the signing wallet, and changing the fee collector needs `DEFAULT_ADMIN`. Grant the first from **Admin -> Admins -> On-chain access** while connected as the contract admin.
+
 ## 4. First market (all from the admin dashboard, `/admin`)
 
 1. A project owner opens **Create Listing → Submit Your Project**, fills the form and submits (they sign in with their wallet; the team wallet must be the signing wallet).

@@ -318,3 +318,49 @@ def test_connection_strings_are_masked():
     from app.runtime import mask
 
     assert mask("postgresql://user:secretpw@host:5432/db failed") == "postgresql://user:***@host:5432/db failed"
+
+
+# --------------------------------------------------------------------------- super admin controls
+
+
+def test_admin_can_create_edit_and_delete_projects(client, admin_headers):
+    body = {
+        "name": "Admin Added", "token_symbol": "ADM", "description": "Added by an admin", "website": "https://adm.example.com",
+        "socials": ["https://x.com/adm"], "category": "DeFi", "blockchain": "Arc Testnet", "tge_info": "Q3", "evidence": "added by the team",
+    }
+    outsider = login(client, make_wallet(80))
+    assert client.post("/api/admin/projects", headers=outsider, json=body).status_code == 403
+    r = client.post("/api/admin/projects", headers=admin_headers, json={**body, "status": "Live"})
+    assert r.status_code == 422
+    r = client.post("/api/admin/projects", headers=admin_headers, json=body)
+    assert r.status_code == 200 and r.json()["status"] == "Approved"
+    pid = r.json()["id"]
+    assert [i["token_symbol"] for i in client.get("/api/projects/upcoming").json()["items"]] == ["ADM"]
+    # edit at any stage
+    r = client.put(f"/api/admin/projects/{pid}", headers=admin_headers, json={**body, "name": "Admin Renamed", "token_symbol": "ADN"})
+    assert r.status_code == 200 and r.json()["name"] == "Admin Renamed"
+    assert client.put(f"/api/admin/projects/{pid}", headers=outsider, json=body).status_code == 403
+    assert client.put(f"/api/admin/projects/{pid}", headers=admin_headers, json={**body, "token_symbol": "bad symbol!"}).status_code == 422
+    # delete (no market on-chain)
+    assert client.delete(f"/api/admin/projects/{pid}", headers=outsider).status_code == 403
+    assert client.delete(f"/api/admin/projects/{pid}", headers=admin_headers).status_code == 200
+    assert client.get("/api/projects/upcoming").json()["items"] == []
+    assert client.delete(f"/api/admin/projects/{pid}", headers=admin_headers).status_code == 404
+    with SessionLocal() as db:
+        actions = [a.action for a in db.scalars(select(AuditLog))]
+    assert {"project.create", "project.edit", "project.delete"} <= set(actions)
+
+
+def test_admin_can_delist_and_relist_but_not_delete_a_market_project(client, admin_headers):
+    from .test_markets_api import seed_market
+
+    with SessionLocal() as db:
+        m = seed_market(db, 1, "Alpha Net", "ALP")
+        mid, pid = m.id, m.project_id
+        db.commit()
+    assert client.delete(f"/api/admin/projects/{pid}", headers=admin_headers).status_code == 409
+    r = client.post(f"/api/admin/markets/{mid}/delist", headers=admin_headers, json={"delisted": True})
+    assert r.status_code == 200 and r.json()["delisted"] is True
+    assert client.get("/api/markets").json()["items"] == []
+    assert client.post(f"/api/admin/markets/{mid}/delist", headers=admin_headers, json={"delisted": False}).status_code == 200
+    assert len(client.get("/api/markets").json()["items"]) == 1

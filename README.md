@@ -59,6 +59,10 @@ Use a browser wallet pointed at `http://localhost:8545` (chain id 5042002) and i
 
 Five themes (Paper, Sky, Mint, Ink, Terminal), picked from the Theme menu in the header and remembered per browser. All use the brand green `#28DF99` and black `#262627`; Archivo for text, IBM Plex Mono for every figure. The home page shows a live platform ledger and a market board (last price, best bid/ask, 24h volume, open interest, buy-side vs sell-side liquidity); a market page adds a depth chart. `scripts/seed_demo_markets.py` fills a testnet deployment with labelled demo markets.
 
+## Home page and motion
+
+The home page has a 3D hero (the brand pyramid, built with three.js; it turns and pulls apart as you scroll), a liquidity landscape (one pair of towers per market, buy side green and sell side red, drawn from live order data), a scroll-driven "life of a trade" walkthrough, a latest-trades feed and a product FAQ. three.js loads in its own chunk and renders on demand. Everything respects `prefers-reduced-motion` and has a text alternative.
+
 ## Product tour
 
 `docs/Avantdex-product-tour.pptx` is a slide deck of every page, built from the screenshots in `docs/screenshots/` (captured from the local dev stack with demo data). `python scripts/build_deck.py` rebuilds the deck.

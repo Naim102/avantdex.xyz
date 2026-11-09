@@ -154,7 +154,19 @@ function MarketActions({ m, cfg }: { m: AdminMarket; cfg: AppConfig }) {
 }
 
 function MarketCardAdmin({ m, cfg }: { m: AdminMarket; cfg: AppConfig }) {
+  const qc = useQueryClient()
   const [open, setOpen] = useState(false)
+  const [err, setErr] = useState('')
+  const toggleListing = async () => {
+    setErr('')
+    try {
+      await api.post(`/admin/markets/${m.id}/delist`, { delisted: !m.delisted })
+      void qc.invalidateQueries({ queryKey: ['admin-markets'] })
+      void qc.invalidateQueries({ queryKey: ['markets'] })
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Failed')
+    }
+  }
   return (
     <div className="glass space-y-3 rounded-3xl p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -167,9 +179,15 @@ function MarketCardAdmin({ m, cfg }: { m: AdminMarket; cfg: AppConfig }) {
         <div className="flex items-center gap-2">
           {m.token_address && m.token_address !== ZERO && <a className="mono text-xs text-[var(--accent-text)] hover:underline" href={addrUrl(m.token_address)} target="_blank" rel="noopener noreferrer">{shortAddr(m.token_address)}</a>}
           <StatusChip status={m.status} />
-          <button className="btn btn-ghost !min-h-9" onClick={() => setOpen((o) => !o)}>{open ? 'Hide' : 'Manage'}</button>
+          {m.onchain_id !== null && (
+            <button className="btn btn-ghost !min-h-9" onClick={() => void toggleListing()} title="Off-chain visibility only. Orders, settlement and refunds are not affected.">
+              {m.delisted ? 'Show on site' : 'Hide from site'}
+            </button>
+          )}
+          <button className="btn btn-ghost !min-h-9" onClick={() => setOpen((o) => !o)}>{open ? 'Close' : 'Manage'}</button>
         </div>
       </div>
+      {err && <Notice tone="error">{err}</Notice>}
       {open && <MarketActions m={m} cfg={cfg} />}
     </div>
   )

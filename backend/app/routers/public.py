@@ -260,6 +260,26 @@ def platform_stats(db: Session = Depends(get_db)) -> dict:
     }
 
 
+@router.get("/trades/recent")
+def recent_trades(limit: int = Query(12, ge=1, le=50), db: Session = Depends(get_db)) -> dict:
+    """Latest matched trades across public markets (public chain data)."""
+    markets = {m.onchain_id: m for m in db.scalars(select(Market).options(joinedload(Market.project)).where(Market.onchain_id.is_not(None), Market.delisted.is_(False)))}
+    items = []
+    for t in db.scalars(select(Trade).order_by(Trade.id.desc()).limit(limit * 3)):
+        m = markets.get(t.market_onchain_id)
+        if m is None:
+            continue
+        d = trade_json(t)
+        d["market"] = {
+            "slug": m.slug, "onchain_id": m.onchain_id, "name": m.project.name if m.project else None,
+            "symbol": m.project.token_symbol if m.project else None, "lot_size": str(m.lot_size), "token_decimals": m.token_decimals,
+        }
+        items.append(d)
+        if len(items) >= limit:
+            break
+    return {"items": items}
+
+
 @router.get("/projects/upcoming")
 def upcoming_projects(db: Session = Depends(get_db)) -> dict:
     """Approved projects whose market is not trading yet (shown as 'Coming soon'; nothing can be traded on them)."""

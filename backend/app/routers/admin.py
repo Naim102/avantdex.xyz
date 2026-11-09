@@ -34,9 +34,9 @@ from ..models import (
     utcnow,
 )
 from ..security import LEGACY_ROLES, ROLES, ApiError, Session_, audit, normalize_address, require_any_admin
-from ..utils import BADGES, clean_text, iso, project_private
+from ..utils import BADGES, clean_text, iso, make_slug, project_private
 from .public import market_json, bulk_stats
-from .user import dispute_json
+from .user import ProjectIn, _apply, dispute_json
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -133,6 +133,60 @@ def transition(pid: int, body: TransitionIn, user: Session_ = Depends(require_an
     audit(db, user, "project.transition", "project", p.id, before, {"status": body.to, "reason": reason})
     db.commit()
     return project_private(p)
+
+
+class AdminProjectIn(ProjectIn):
+    status: str = "Approved"
+
+
+@router.post("/projects")
+def admin_create_project(body: AdminProjectIn, user: Session_ = Depends(require_any_admin), db: Session = Depends(get_db)) -> dict:
+    """Add a project directly (an admin can list a project on behalf of its team). Same validation as an application."""
+    if body.status not in ("Submitted", "Under Review", "Verification", "Approved"):
+        raise ApiError(422, "validation_error", "status must be Submitted, Under Review, Verification or Approved")
+    data = body.model_dump(exclude={"status"})
+    data["team_wallet"] = data["team_wallet"] or user.address
+    p = Project(slug="pending", applicant=user.address, status="Draft", name="", token_symbol="X")
+    _apply(p, ProjectIn(**data))
+    p.slug = make_slug(db, p.name)
+    db.add(p)
+    db.flush()
+    db.add(ProjectStatusHistory(project_id=p.id, from_status=None, to_status="Draft", actor=user.address, reason="created by admin"))
+    db.add(ProjectStatusHistory(project_id=p.id, from_status="Draft", to_status=body.status, actor=user.address, reason="created by admin"))
+    p.status = body.status
+    audit(db, user, "project.create", "project", p.id, None, {"name": p.name, "status": p.status})
+    db.commit()
+    return project_private(p)
+
+
+@router.put("/projects/{pid}")
+def admin_edit_project(pid: int, body: ProjectIn, user: Session_ = Depends(require_any_admin), db: Session = Depends(get_db)) -> dict:
+    """Edit any field of a project at any stage (the market, once created on-chain, is unaffected)."""
+    p = db.get(Project, pid)
+    if p is None:
+        raise ApiError(404, "project_not_found", "Project not found")
+    before = project_private(p)
+    _apply(p, body)
+    audit(db, user, "project.edit", "project", p.id, {"name": before["name"], "symbol": before["token_symbol"]}, {"name": p.name, "symbol": p.token_symbol})
+    db.commit()
+    return project_private(p)
+
+
+@router.delete("/projects/{pid}")
+def admin_delete_project(pid: int, user: Session_ = Depends(require_any_admin), db: Session = Depends(get_db)) -> dict:
+    """Remove a project that has no market on-chain. A project with an on-chain market can only be delisted."""
+    p = db.get(Project, pid)
+    if p is None:
+        raise ApiError(404, "project_not_found", "Project not found")
+    markets = list(db.scalars(select(Market).where(Market.project_id == p.id)))
+    if any(m.onchain_id is not None for m in markets):
+        raise ApiError(409, "has_market", "This project has a market on-chain. Delist it instead of deleting it.")
+    for m in markets:
+        db.delete(m)
+    audit(db, user, "project.delete", "project", p.id, {"name": p.name, "status": p.status}, None)
+    db.delete(p)
+    db.commit()
+    return {"ok": True}
 
 
 class BadgeIn(BaseModel):
@@ -360,6 +414,24 @@ def approve_activation(mid: int, user: Session_ = Depends(require_any_admin), db
         raise ApiError(409, "two_person_rule", "A second admin must approve activation")
     m.activation_approved_by = user.address
     audit(db, user, "market.approve_activation", "market", m.id, None, {"approved_by": user.address})
+    db.commit()
+    return admin_market_json(m, db)
+
+
+class DelistIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    delisted: bool
+
+
+@router.post("/markets/{mid}/delist")
+def set_delisted(mid: int, body: DelistIn, user: Session_ = Depends(require_any_admin), db: Session = Depends(get_db)) -> dict:
+    """Hide a market from discovery (or show it again). Off-chain only: orders, settlement and refunds are untouched."""
+    m = db.get(Market, mid)
+    if m is None:
+        raise ApiError(404, "market_not_found", "Market not found")
+    before = {"delisted": m.delisted}
+    m.delisted = body.delisted
+    audit(db, user, "market.delist" if body.delisted else "market.relist", "market", m.id, before, {"delisted": m.delisted})
     db.commit()
     return admin_market_json(m, db)
 

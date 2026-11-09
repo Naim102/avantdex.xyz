@@ -11,7 +11,7 @@ Environment:
                       on-chain MARKET_MANAGER role; it also places the sell orders
   TRADER_PRIVATE_KEY  a second wallet that places the buy orders
   SEED_SCALE          optional, multiplies order sizes (default 1; use 0 for markets without orders)
-  SEED_MARKETS        optional, how many demo markets to create (default 3, max 4)
+  SEED_MARKETS        optional, how many demo markets to create (default 3, max 6)
 Each market needs about 5 USDC of testnet USDC in total (two asks and two bids at the 1 USDC minimum order value,
 plus one small trade). It stays locked in resting orders and can be cancelled back at any time. Safe to run twice:
 projects that already exist by name are skipped.
@@ -39,7 +39,7 @@ USDC = Web3.to_checksum_address("0x3600000000000000000000000000000000000000")
 ADMIN = Account.from_key(os.environ["ADMIN_PRIVATE_KEY"])
 TRADER = Account.from_key(os.environ["TRADER_PRIVATE_KEY"])
 SCALE = int(os.environ.get("SEED_SCALE", "1"))
-LIMIT = int(os.environ.get("SEED_MARKETS", "3"))  # how many demo markets to create (max 4)
+LIMIT = int(os.environ.get("SEED_MARKETS", "3"))  # how many demo markets to create (max 6)
 ONE = 10**6
 TICK = 10_000  # 0.01 USDC per token
 MAX_FEE = Web3.to_wei(25, "gwei")  # Arc guidance: at least 20 gwei
@@ -61,6 +61,8 @@ DEMOS = [
     ("Demo Arc Games", "DAG", "Gaming", 0.25, "Demo project on a worthless testnet token. It exists only to show how an Avantdex market looks."),
     ("Demo Pay Rails", "DPR", "Payments", 0.60, "Demo project on a worthless testnet token. It exists only to show how an Avantdex market looks."),
     ("Demo Compute Net", "DCN", "AI", 0.15, "Demo project on a worthless testnet token. It exists only to show how an Avantdex market looks."),
+    ("Demo Rollup Labs", "DRL", "Infrastructure", 0.85, "Demo project on a worthless testnet token. It exists only to show how an Avantdex market looks."),
+    ("Demo Vault RWA", "DVR", "RWA", 0.32, "Demo project on a worthless testnet token. It exists only to show how an Avantdex market looks."),
 ]
 ASKS = [(1.02, 1), (1.07, 1)]  # (multiple of mid price, lots); sizes are raised to the 1 USDC minimum order value
 BIDS = [(0.98, 1), (0.93, 1)]
@@ -142,9 +144,7 @@ def main() -> None:
             "documentation": ["https://docs.arc.io"], "evidence": "Demo project created by the Avantdex team to show the product on testnet.",
             "team_wallet": ADMIN.address.lower(),
         }
-        pid = ok(client.post("/api/projects", json=body, headers=ah)).json()["id"]
-        ok(client.post(f"/api/projects/{pid}/submit", headers=ah))
-        ok(client.post(f"/api/admin/projects/{pid}/transition", json={"to": "Approved"}, headers=ah))
+        pid = ok(client.post("/api/admin/projects", json={**body, "status": "Approved"}, headers=ah)).json()["id"]
         mk = client.post("/api/admin/markets", headers=ah, json={"project_id": pid, "lot_size": 10**18, "tick_size": TICK, "min_lots": 1, "max_lots": 1000, "trading_start": iso(now - 60), "trading_end": iso(now + 30 * 86400)})
         mk.raise_for_status()
         mk = mk.json()

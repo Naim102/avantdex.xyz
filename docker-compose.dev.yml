@@ -11,7 +11,7 @@ services:
       POSTGRES_USER: avantdex
       POSTGRES_PASSWORD: avantdex
       POSTGRES_DB: avantdex
-    ports: ["55433:5432"]
+    ports: ["58433:5432"]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U avantdex"]
       interval: 3s

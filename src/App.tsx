@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { motion, useReducedMotion } from 'framer-motion'
 import { BrowserRouter, Link, Route, Routes, useLocation } from 'react-router-dom'
 import { Header, NetworkBanner } from '@/components/Header'
 import Home from '@/pages/Home'
@@ -22,6 +23,19 @@ function ScrollTop() {
   return null
 }
 
+/** Every route change fades and slides the new page in. Static for people who prefer reduced motion. */
+function PageFrame({ children }: { children: React.ReactNode }) {
+  const { pathname } = useLocation()
+  const reduce = useReducedMotion()
+  const cls = 'mx-auto max-w-6xl px-3 pb-12 pt-5 sm:px-4 sm:pb-16 sm:pt-8'
+  if (reduce) return <main className={cls}>{children}</main>
+  return (
+    <motion.main key={pathname} className={cls} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}>
+      {children}
+    </motion.main>
+  )
+}
+
 export default function App() {
   return (
     <BrowserRouter>
@@ -29,7 +43,7 @@ export default function App() {
       <div className="min-h-dvh">
         <Header />
         <NetworkBanner />
-        <main className="mx-auto max-w-6xl px-3 pb-12 pt-5 sm:px-4 sm:pb-16 sm:pt-8">
+        <PageFrame>
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/explore" element={<Explore />} />
@@ -67,7 +81,7 @@ export default function App() {
               }
             />
           </Routes>
-        </main>
+        </PageFrame>
         <Footer />
       </div>
     </BrowserRouter>

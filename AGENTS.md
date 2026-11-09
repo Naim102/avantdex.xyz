@@ -28,7 +28,7 @@ Buyer 0.5% and seller 0.5% on **settled** trades only; 0% for order cancellation
 
 ## Admin model
 
-One admin level: any wallet with an admin row (`BOOTSTRAP_ADMIN_ADDRESSES` / `ADMIN_ROLES` / dashboard) can do everything in `/admin`. Old split role names are accepted and treated as admin. Approved projects show publicly as "Coming soon" (`GET /api/projects/upcoming`); trading starts only after the on-chain market is created and activated by a wallet holding the on-chain `MARKET_MANAGER` role. Official X account: https://x.com/AvantDex.
+One admin level, and it is the super admin: any wallet with an admin row (`BOOTSTRAP_ADMIN_ADDRESSES` / `ADMIN_ROLES` / dashboard) can do everything in `/admin`: review and approve projects, add, edit and delete projects (`POST/PUT/DELETE /api/admin/projects`), hide or show a market (`POST /api/admin/markets/{id}/delist`, off-chain only), manage admins, disputes, listing requests, settings. Old split role names are accepted and treated as admin. Approved projects show publicly as "Coming soon" (`GET /api/projects/upcoming`); trading starts only after the on-chain market is created and activated by a wallet holding the on-chain `MARKET_MANAGER` role. Official X account: https://x.com/AvantDex.
 
 ## Design
 

@@ -188,3 +188,16 @@ def test_depth_and_platform_stats_come_from_indexed_rows(client):
     assert g["volume_total"] == str(14 * ONE) and g["volume_24h"] == str(6 * ONE) and g["open_interest"] == str(8 * ONE)
     assert g["bid_depth"] == str(22 * ONE) and g["ask_depth"] == str(15 * ONE)
     assert g["fees_paid"] == str(6 * ONE * 100 // 10000)  # 0.5% + 0.5% of the one settled trade
+
+
+def test_recent_trades_feed_lists_public_markets_only(client):
+    with SessionLocal() as db:
+        seed_market(db, 1, "Alpha Net", "ALP")
+        seed_market(db, 2, "Hidden Setup", "HID", status="Setup")
+        trade(db, 1, 1, 2 * ONE, 3, hours_ago=3)
+        trade(db, 2, 1, 2 * ONE, 4, hours_ago=1)
+        db.commit()
+    items = client.get("/api/trades/recent").json()["items"]
+    assert [t["id"] for t in items] == [2, 1]
+    assert items[0]["market"]["name"] == "Alpha Net" and items[0]["market"]["symbol"] == "ALP"
+    assert len(client.get("/api/trades/recent", params={"limit": 1}).json()["items"]) == 1
