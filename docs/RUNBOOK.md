@@ -137,3 +137,7 @@ What it will never do: cancel or suspend a market, open or extend settlement, pa
 * If a market is never settled, anyone can refund trades 90 days after trading ended.
 * Rebuild the database from the chain at any time: drop the PostgreSQL volume and restart; the indexer replays every event from `EXCHANGE_DEPLOY_BLOCK`. (Project records, badges and audit logs are off-chain and live only in PostgreSQL, so back it up.)
 * Back up the `pgdata` volume regularly.
+
+## Deploy fails with "dependency failed to start: container api ... is unhealthy"
+
+The compose health check calls `GET /api/livez`, which answers as soon as the API process is up and does not touch the database, so a slow or unreachable database no longer blocks the stack; `GET /api/health` still reports the database and migration state (`status: degraded` with the reason). Database connections time out after 5 seconds. The `keeper` service is a compose profile and is not started unless `COMPOSE_PROFILES=keeper` is set (it saves memory on small servers, where three Python processes plus the old stack during a rolling deploy can be killed for lack of memory). If the API container still does not become healthy, read **its own log** in Coolify (the first lines show `[start] database: ...`); a crash there names the cause (for example `JWT_SECRET must be set ... at least 32 characters`).

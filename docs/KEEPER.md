@@ -27,6 +27,7 @@ It never calls `cancelMarket`, `suspendMarket`, `openSettlement`, `extendSettlem
 
 ## Turning it on
 
+0. The keeper container is **not started by default** (a compose profile, to save memory on small servers). Set `COMPOSE_PROFILES=keeper` in the environment (Coolify: add it as a variable) and redeploy to start it.
 1. Create a **new wallet** only for this. Never use an admin, deployer or personal key. Send it a little USDC for gas (a few cents per call).
 2. Set on the `keeper` service: `KEEPER_ENABLED=true`, `KEEPER_PRIVATE_KEY=0x...`. Start with `KEEPER_DRY_RUN=true` for a day and read the logs.
 3. Set `KEEPER_DRY_RUN=false`.

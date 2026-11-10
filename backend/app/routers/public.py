@@ -44,6 +44,13 @@ def config(db: Session = Depends(get_db)) -> dict:
     }
 
 
+@router.get("/livez")
+def livez() -> dict:
+    """Process liveness only (no database): what the container health check uses, so a slow or unreachable database
+    cannot make the whole stack fail to start. /health reports the database state."""
+    return {"ok": True}
+
+
 @router.get("/health")
 def health() -> dict:
     """Always answers (so the container counts as started) and says what is wrong when something is."""

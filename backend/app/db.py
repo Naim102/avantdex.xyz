@@ -12,7 +12,7 @@ _SessionLocal = None
 def get_engine():
     global _engine, _SessionLocal
     if _engine is None:
-        _engine = create_engine(get_settings().database_url, pool_pre_ping=True, future=True)
+        _engine = create_engine(get_settings().database_url, pool_pre_ping=True, future=True, connect_args={"connect_timeout": 5})
         _SessionLocal = sessionmaker(bind=_engine, expire_on_commit=False, future=True)
     return _engine
 
