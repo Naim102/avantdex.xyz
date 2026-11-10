@@ -364,3 +364,15 @@ def test_admin_can_delist_and_relist_but_not_delete_a_market_project(client, adm
     assert client.get("/api/markets").json()["items"] == []
     assert client.post(f"/api/admin/markets/{mid}/delist", headers=admin_headers, json={"delisted": False}).status_code == 200
     assert len(client.get("/api/markets").json()["items"]) == 1
+
+
+def test_admin_with_every_legacy_role_row_can_approve_and_grant_badges(client):
+    """Regression: the joined role names (over 32 characters) used to overflow audit_logs.role and fail with a 500."""
+    w = make_wallet(90)
+    grant({w.address: ["super_admin", "settlement_manager", "market_manager", "project_reviewer", "verification_admin", "support_admin"]})
+    h = login(client, w)
+    _, _, pid = _submitted(client)
+    assert client.post(f"/api/admin/projects/{pid}/transition", headers=h, json={"to": "Approved"}).status_code == 200
+    assert client.post(f"/api/admin/projects/{pid}/badges", headers=h, json={"badge": "verified_project", "evidence": "checked"}).status_code == 200
+    with SessionLocal() as db:
+        assert {a.role for a in db.scalars(select(AuditLog))} == {"super_admin"}

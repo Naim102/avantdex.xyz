@@ -33,7 +33,7 @@ from ..models import (
     IndexerState,
     utcnow,
 )
-from ..security import LEGACY_ROLES, ROLES, ApiError, Session_, audit, normalize_address, require_any_admin
+from ..security import LEGACY_ROLES, ROLES, ApiError, Session_, audit, normalize_address, require_any_admin, role_label
 from ..utils import BADGES, clean_text, iso, make_slug, project_private
 from .public import market_json, bulk_stats
 from .user import ProjectIn, _apply, dispute_json
@@ -207,7 +207,7 @@ def grant_badge(pid: int, body: BadgeIn, user: Session_ = Depends(require_any_ad
     for b in p.badges:  # re-granting replaces the previous active badge of the same kind
         if b.badge == body.badge and b.revoked_at is None:
             b.revoked_at = utcnow()
-    b = VerificationBadge(project_id=p.id, badge=body.badge, evidence=evidence, granted_by=user.address, granted_role=",".join(user.roles), expires_at=body.expires_at)
+    b = VerificationBadge(project_id=p.id, badge=body.badge, evidence=evidence, granted_by=user.address, granted_role=role_label(user.roles), expires_at=body.expires_at)
     db.add(b)
     audit(db, user, "badge.grant", "project", p.id, None, {"badge": body.badge, "evidence": evidence})
     db.commit()

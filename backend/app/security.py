@@ -163,11 +163,16 @@ def require_any_admin(user: Session_ = Depends(current_user)) -> Session_:
 # --------------------------------------------------------------------------- audit log
 
 
+def role_label(roles: list[str]) -> str:
+    """Short label for logs: every admin is a super admin now, legacy role rows are not listed one by one."""
+    return "super_admin" if roles else ""
+
+
 def audit(db: Session, user: Session_, action: str, entity_type: str, entity_id: object, before=None, after=None) -> None:
     db.add(
         AuditLog(
             actor=user.address,
-            role=",".join(user.roles),
+            role=role_label(user.roles),
             action=action,
             entity_type=entity_type,
             entity_id=str(entity_id),

@@ -20,7 +20,11 @@ export function HeroPyramid() {
   const { scrollY } = useScroll()
   const progress = useTransform(scrollY, [0, 900], [0, 1])
   return (
-    <div className="relative h-[20rem] sm:h-[26rem] lg:h-[31rem]">
+    <motion.div
+      className="relative h-[20rem] sm:h-[26rem] lg:h-[31rem]"
+      animate={reduce ? undefined : { y: [0, -10, 0] }}
+      transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
+    >
       <ThreeCanvas
         build={buildPyramid}
         progress={progress}
@@ -29,7 +33,7 @@ export function HeroPyramid() {
         className="absolute inset-0"
         fallback={<div className="flex h-full items-center justify-center"><Logo className="size-24" /></div>}
       />
-    </div>
+    </motion.div>
   )
 }
 

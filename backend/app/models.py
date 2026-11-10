@@ -138,7 +138,7 @@ class VerificationBadge(Base):
     badge: Mapped[str] = mapped_column(String(24))  # verified_project | contract_verified | allocation_verified
     evidence: Mapped[str] = mapped_column(Text, default="")
     granted_by: Mapped[str] = mapped_column(String(42))
-    granted_role: Mapped[str] = mapped_column(String(32), default="")
+    granted_role: Mapped[str] = mapped_column(String(255), default="")
     expires_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     revoked_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
@@ -301,7 +301,7 @@ class AuditLog(Base):
     __tablename__ = "audit_logs"
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
     actor: Mapped[str] = mapped_column(String(42), index=True)
-    role: Mapped[str] = mapped_column(String(32), default="")
+    role: Mapped[str] = mapped_column(String(255), default="")
     action: Mapped[str] = mapped_column(String(60), index=True)
     entity_type: Mapped[str] = mapped_column(String(30))
     entity_id: Mapped[str] = mapped_column(String(80))

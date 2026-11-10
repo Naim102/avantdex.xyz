@@ -14,6 +14,7 @@ import { LiveMarkets, MarketManagement, SettlementManagement } from '@/pages/adm
 import { AuditLogs, Disputes, Overview, Roles, SettingsPage, Users } from '@/pages/admin/Misc'
 import { EmptyState } from '@/components/ui'
 import { Footer } from '@/components/Footer'
+import { CursorFx } from '@/components/CursorFx'
 
 function ScrollTop() {
   const { pathname } = useLocation()
@@ -50,6 +51,7 @@ export default function App() {
     <BrowserRouter>
       <ScrollTop />
       <ScrollProgress />
+      <CursorFx />
       <div className="min-h-dvh">
         <Header />
         <NetworkBanner />
