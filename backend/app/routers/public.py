@@ -526,3 +526,64 @@ def portfolio_summary(address: str, db: Session = Depends(get_db)) -> dict:
         "locked_in_trades": str(locked_trades),
         "claimable": str(claim.amount if claim else 0),
     }
+
+
+@router.get("/portfolio/{address}/positions")
+def portfolio_positions(address: str, db: Session = Depends(get_db)) -> dict:
+    """Per market (token): what the wallet will receive or has to deliver, USDC locked, and what is still resting.
+
+    Amounts are lots; the client converts them to tokens with the market's lot size and decimals. `open_*` order
+    fields are NOT guaranteed fills, they are resting orders that may or may not match. Trades are guaranteed
+    by escrow (they settle, default or refund).
+    """
+    addr = normalize_address(address)
+    now = utcnow()
+    rows: dict[int, dict] = {}
+
+    def row(mid: int) -> dict:
+        return rows.setdefault(mid, {
+            "market_onchain_id": mid, "to_receive_lots": 0, "to_deliver_lots": 0, "pay_locked": 0, "collateral_locked": 0, "sale_net": 0,
+            "received_lots": 0, "delivered_lots": 0, "open_trades": 0, "open_buy_lots": 0, "open_sell_lots": 0, "locked_in_orders": 0, "open_orders": 0,
+        })
+
+    for t in db.scalars(select(Trade).where(or_(Trade.buyer == addr, Trade.seller == addr))):
+        r = row(t.market_onchain_id)
+        if t.status == "Open":
+            r["open_trades"] += 1
+            if t.buyer == addr:
+                r["to_receive_lots"] += t.lots
+                r["pay_locked"] += t.value + t.buyer_fee
+            if t.seller == addr:
+                r["to_deliver_lots"] += t.lots
+                r["collateral_locked"] += t.value
+                r["sale_net"] += t.value - t.seller_fee
+        elif t.status == "Settled":
+            if t.buyer == addr:
+                r["received_lots"] += t.lots
+            if t.seller == addr:
+                r["delivered_lots"] += t.lots
+    for o in db.scalars(select(Order).where(Order.owner == addr, Order.status == "Open")):
+        exp = o.expiry if o.expiry.tzinfo else o.expiry.replace(tzinfo=dt.timezone.utc)
+        r = row(o.market_onchain_id)
+        r["locked_in_orders"] += o.locked  # an expired order still holds funds until it is cleaned up
+        if exp > now and o.filled < o.lots:
+            r["open_orders"] += 1
+            r["open_buy_lots" if o.side == "buy" else "open_sell_lots"] += o.lots - o.filled
+
+    markets = {m.onchain_id: m for m in db.scalars(select(Market).options(joinedload(Market.project)).where(Market.onchain_id.in_(list(rows) or [-1])))}
+    items = []
+    for mid, r in sorted(rows.items()):
+        m = markets.get(mid)
+        if m is None:
+            continue
+        p = m.project
+        items.append({
+            **{k: str(v) if k in ("pay_locked", "collateral_locked", "sale_net", "locked_in_orders") else v for k, v in r.items()},
+            "market": {
+                "slug": m.slug, "status": m.status, "name": p.name if p else None, "symbol": p.token_symbol if p else None,
+                "logo_url": p.logo_url if p else "", "token_address": m.token_address, "lot_size": str(m.lot_size), "token_decimals": m.token_decimals,
+                "tge_date": iso(m.tge_date or (p.tge_date if p else None)), "trading_end": iso(m.trading_end),
+                "settlement_deadline": iso(m.settlement_deadline),
+            },
+        })
+    return {"items": items}

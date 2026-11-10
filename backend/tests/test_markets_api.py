@@ -201,3 +201,32 @@ def test_recent_trades_feed_lists_public_markets_only(client):
     assert [t["id"] for t in items] == [2, 1]
     assert items[0]["market"]["name"] == "Alpha Net" and items[0]["market"]["symbol"] == "ALP"
     assert len(client.get("/api/trades/recent", params={"limit": 1}).json()["items"]) == 1
+
+
+def test_portfolio_positions_per_token(client):
+    me = "0x" + "d" * 40
+    with SessionLocal() as db:
+        seed_market(db, 1, "Alpha Net", "ALP", tge_days=5)
+        seed_market(db, 2, "Beta Chain", "BET")
+        trade(db, 1, 1, 2 * ONE, 3, buyer=me, seller=A)             # I buy 3 lots
+        trade(db, 2, 1, 2 * ONE, 2, buyer=B, seller=me)             # I sell 2 lots
+        trade(db, 3, 1, 2 * ONE, 4, buyer=me, seller=A, status="Settled")  # already received 4 lots
+        trade(db, 4, 2, ONE, 5, buyer=B, seller=me, status="Defaulted")    # defaulted trades are not open positions
+        order(db, 1, 1, "buy", ONE, 10, owner=me, filled=4)          # 6 lots still resting
+        order(db, 2, 2, "sell", 3 * ONE, 3, owner=me)
+        db.commit()
+        db.get(Order, 1).locked = 6 * ONE + 6 * ONE * 50 // 10_000
+        db.get(Order, 2).locked = 9 * ONE
+        db.commit()
+    got = {i["market_onchain_id"]: i for i in client.get(f"/api/portfolio/{me}/positions").json()["items"]}
+    a = got[1]
+    assert (a["to_receive_lots"], a["to_deliver_lots"], a["received_lots"], a["delivered_lots"], a["open_trades"]) == (3, 2, 4, 0, 2)
+    fee = lambda v: v * 50 // 10_000
+    assert a["pay_locked"] == str(3 * 2 * ONE + fee(3 * 2 * ONE)) and a["collateral_locked"] == str(2 * 2 * ONE)
+    assert a["sale_net"] == str(2 * 2 * ONE - fee(2 * 2 * ONE))
+    assert a["open_buy_lots"] == 6 and a["open_sell_lots"] == 0 and a["locked_in_orders"] == str(6 * ONE + 6 * ONE * 50 // 10_000)
+    assert a["market"]["name"] == "Alpha Net" and a["market"]["symbol"] == "ALP" and a["market"]["tge_date"] is not None
+    b = got[2]
+    assert (b["to_receive_lots"], b["to_deliver_lots"], b["open_trades"], b["open_sell_lots"]) == (0, 0, 0, 3)
+    assert client.get(f"/api/portfolio/{'0x' + 'e' * 40}/positions").json() == {"items": []}
+    assert client.get("/api/portfolio/nope/positions").status_code == 422

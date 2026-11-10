@@ -163,6 +163,12 @@ await test('trader: market buy (IOC) fills against resting sell orders', async (
   await mustClick(trader, /^Buy /)
   await waitFor(async () => (await get('/markets/5/stats')).trades > before, 'trade indexed', 40000)
 })
+await test('trader: portfolio overview shows the token allocation per market', async () => {
+  await trader.goto(BASE + '/portfolio', { waitUntil: 'networkidle2' })
+  await waitFor(() => trader.evaluate(() => /Your token allocation/.test(document.body.innerText) && document.querySelectorAll('table tbody tr').length >= 3), 'allocation rows', 20000)
+  const rows = await trader.evaluate(() => [...document.querySelectorAll('table tbody tr')].map((r) => r.innerText.replace(/\s+/g, ' ')))
+  if (!rows.some((r) => /\+\d/.test(r) && /Buy up to/.test(r) && /Live/.test(r))) throw new Error('no row with tokens to receive, resting orders and status: ' + rows[0])
+})
 await test('trader: portfolio tabs (overview, trade history, settlement status) show data', async () => {
   for (const tab of ['Overview', 'Trade History', 'Settlement Status']) {
     await trader.goto(BASE + '/portfolio' + (tab === 'Overview' ? '' : '?tab=' + encodeURIComponent(tab)), { waitUntil: 'networkidle2' })

@@ -9,6 +9,7 @@
 | [OPERATIONS-PHASE-1.md](OPERATIONS-PHASE-1.md) | Phase 1: token pre-flight, market draft form, Needs attention, reminders, webhook, pause |
 | [KEEPER.md](KEEPER.md) | Phase 2: the keeper worker, safeguards, setup, monitoring |
 | [CONTRACT-V2.md](CONTRACT-V2.md) | Phase 3: contract v2 changes, ABI, tests, deployment record |
+| [PORTFOLIO.md](PORTFOLIO.md) | the Portfolio overview: token allocation per market, what is guaranteed, the positions API |
 | [INDEXER.md](INDEXER.md) | how the chain is mirrored, binding markets, switching contracts |
 | [DESIGN.md](DESIGN.md) | themes, look, motion, home page, responsive rules |
 | [TEST-REPORT.md](TEST-REPORT.md) | what was tested and the results |

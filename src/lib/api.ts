@@ -228,3 +228,33 @@ export interface MatchPlan {
   expected_fee: string
   remaining_lots: string
 }
+
+/** Per market (token) position of a wallet, from GET /portfolio/{address}/positions. Amounts are lots; money is USDC base units. */
+export interface Position {
+  market_onchain_id: number
+  to_receive_lots: number
+  to_deliver_lots: number
+  pay_locked: string
+  collateral_locked: string
+  sale_net: string
+  received_lots: number
+  delivered_lots: number
+  open_trades: number
+  open_buy_lots: number
+  open_sell_lots: number
+  open_orders: number
+  locked_in_orders: string
+  market: {
+    slug: string | null
+    status: string
+    name: string | null
+    symbol: string | null
+    logo_url: string
+    token_address: string
+    lot_size: string
+    token_decimals: number
+    tge_date: string | null
+    trading_end: string | null
+    settlement_deadline: string | null
+  }
+}

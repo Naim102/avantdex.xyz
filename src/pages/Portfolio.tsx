@@ -6,11 +6,12 @@ import { erc20Abi } from 'viem'
 import { ExternalLink } from 'lucide-react'
 import { MyOrdersTable } from '@/components/MyOrders'
 import { DataTable, EmptyState, Field, Modal, Notice, PageTitle, Spinner, StatusChip, Tabs, TxPanel, WalletGate, useTicker } from '@/components/ui'
-import { api, type ApiOrder, type ApiTrade, type AppConfig, type Market } from '@/lib/api'
+import { api, type ApiOrder, type ApiTrade, type AppConfig, type Market, type Position } from '@/lib/api'
 import { CHAIN_ID, useAuth, useConfig, useUsdc } from '@/hooks/useApp'
 import { useTx } from '@/hooks/useTx'
 import { exchangeAbi } from '@/lib/exchangeAbi'
 import { countdown, fmtDate, shortAddr, timeAgo, txUrl } from '@/lib/format'
+import { NeedsYou, SummaryBand, TokenAllocation } from '@/components/PortfolioOverview'
 import { fmtLotsAsTokens, fmtPricePerToken, fmtUsdc } from '@/lib/exchange'
 
 const TABS = [
@@ -37,16 +38,6 @@ interface Summary {
   locked_in_orders: string
   locked_in_trades: string
   claimable: string
-}
-
-function Card({ label, value, sub }: { label: string; value: string; sub?: string }) {
-  return (
-    <div className="glass p-4 sm:p-5">
-      <div className="label">{label}</div>
-      <div className="display text-3xl tabular-nums">{value}</div>
-      {sub && <div className="mt-1 text-xs font-semibold opacity-80">{sub}</div>}
-    </div>
-  )
 }
 
 function TradeRow({ t, address, cfg, onDispute }: { t: ApiTrade; address: string; cfg: AppConfig; onDispute: (t: ApiTrade) => void }) {
@@ -241,6 +232,7 @@ export default function Portfolio() {
   const ordersQ = useQuery({ queryKey: ['portfolio-orders', address], queryFn: () => api.get<{ items: ApiOrder[] }>(`/portfolio/${address}/orders`), enabled: !!address, refetchInterval: 8000 })
   const tradesQ = useQuery({ queryKey: ['portfolio-trades', address], queryFn: () => api.get<{ items: ApiTrade[] }>(`/portfolio/${address}/trades`), enabled: !!address, refetchInterval: 8000 })
   const summaryQ = useQuery({ queryKey: ['portfolio-summary', address], queryFn: () => api.get<Summary>(`/portfolio/${address}/summary`), enabled: !!address, refetchInterval: 8000 })
+  const positionsQ = useQuery({ queryKey: ['portfolio-positions', address], queryFn: () => api.get<{ items: Position[] }>(`/portfolio/${address}/positions`), enabled: !!address, refetchInterval: 8000 })
   const marketsQ = useQuery({ queryKey: ['markets', 'all-portfolio'], queryFn: () => api.get<{ items: Market[] }>('/markets'), enabled: !!address })
   const markets = useMemo(() => Object.fromEntries((marketsQ.data?.items ?? []).filter((m) => m.onchain_id !== null).map((m) => [m.onchain_id as number, m])), [marketsQ.data])
 
@@ -279,12 +271,16 @@ export default function Portfolio() {
 
             {tab === 'Overview' && (
               <div className="space-y-4">
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  <Card label="USDC balance" value={balance === undefined ? '…' : `${fmtUsdc(balance)}`} sub="In your wallet" />
-                  <Card label="Locked in open orders" value={fmtUsdc(summaryQ.data?.locked_in_orders ?? '0')} sub={`${summaryQ.data?.open_orders ?? 0} open order(s)`} />
-                  <Card label="Locked in trades" value={fmtUsdc(summaryQ.data?.locked_in_trades ?? '0')} sub={`${summaryQ.data?.open_trades ?? 0} open trade(s) awaiting settlement`} />
-                  <Card label="Claimable" value={fmtUsdc(claimable)} sub="USDC that could not be sent automatically" />
-                </div>
+                <SummaryBand
+                  balance={balance === undefined ? undefined : fmtUsdc(balance)}
+                  lockedOrders={summaryQ.data?.locked_in_orders ?? '0'}
+                  lockedTrades={summaryQ.data?.locked_in_trades ?? '0'}
+                  claimable={claimable.toString()}
+                  openOrders={summaryQ.data?.open_orders ?? 0}
+                  openTrades={summaryQ.data?.open_trades ?? 0}
+                />
+                <NeedsYou positions={positionsQ.data?.items ?? []} nowMs={nowMs} />
+                <TokenAllocation positions={positionsQ.data?.items ?? []} nowMs={nowMs} />
                 {claimable > 0n && (
                   <div className="glass space-y-3 rounded-3xl p-4 sm:p-5">
                     <Notice tone="warn">{fmtUsdc(claimable, 4)} USDC is waiting for you. A transfer to your wallet was refused (for example while an address is blocklisted). Withdraw it here.</Notice>

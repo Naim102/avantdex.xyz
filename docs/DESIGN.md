@@ -35,6 +35,10 @@ Short and purposeful, all of it off for `prefers-reduced-motion`:
 
 Hero with three live figures, market board (last price, bid, ask, 24h volume, open interest, buy versus sell liquidity), category shortcuts, "Where the liquidity sits" (summary band plus a depth table where bar length is a market's total depth and the colors split buy and sell), platform ledger, a scroll-driven "life of a trade", fees in plain numbers (read from the API config), Coming soon, owner steps, FAQ. All numbers come from the API (`/api/stats`, per-market `stats`); nothing is invented.
 
+## Portfolio
+
+The overview opens with one summary band of four wallet figures, then "Needs you" (only when a deadline or claim needs the owner) and the token allocation table (what you receive, deliver and have resting, per token). Details and the rule that resting orders are never shown as guaranteed: [PORTFOLIO.md](PORTFOLIO.md).
+
 ## Responsive
 
 No sideways scrolling from 320 px up. The header is one row on phones (logo, wallet, menu button; the four links open in a menu that closes on navigation, Escape and outside tap). Tables become cards on phones. Tap targets are at least 44 px.
