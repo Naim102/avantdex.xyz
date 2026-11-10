@@ -268,20 +268,25 @@ def test_listing_request_admin_roles(client):
 # --------------------------------------------------------------------------- roles & settings
 
 
-def test_role_management_super_admin_only(client, admin_headers):
+def test_admin_management_one_row_per_wallet(client, admin_headers):
     other = make_wallet(51)
-    r = client.post("/api/admin/roles", headers=admin_headers, json={"address": other.address, "role": "support_admin"})
-    assert r.status_code == 200
-    assert client.post("/api/admin/roles", headers=admin_headers, json={"address": other.address, "role": "support_admin"}).status_code == 409
-    assert client.post("/api/admin/roles", headers=admin_headers, json={"address": other.address, "role": "root"}).status_code == 422
+    assert client.post("/api/admin/roles", headers=admin_headers, json={"address": other.address}).status_code == 200
+    assert client.post("/api/admin/roles", headers=admin_headers, json={"address": other.address}).status_code == 409
     outsider = login(client, make_wallet(72))
-    assert client.post("/api/admin/roles", headers=outsider, json={"address": other.address, "role": "super_admin"}).status_code == 403
-    roles = client.get("/api/admin/roles", headers=admin_headers).json()["items"]
-    assert [x["role"] for x in roles] == ["super_admin", "super_admin"]  # one admin level
-    added = next(x for x in roles if x["address"] == other.address.lower())
-    mine = next(x for x in roles if x["address"] != other.address.lower())
+    assert client.post("/api/admin/roles", headers=outsider, json={"address": other.address}).status_code == 403
+    items = client.get("/api/admin/roles", headers=admin_headers).json()["items"]
+    assert len(items) == 2
+    added = next(x for x in items if x["address"] == other.address.lower())
+    mine = next(x for x in items if x["address"] != other.address.lower())
     assert client.delete(f"/api/admin/roles/{added['id']}", headers=admin_headers).status_code == 200  # another admin remains
     assert client.delete(f"/api/admin/roles/{mine['id']}", headers=admin_headers).status_code == 409  # last admin stays
+
+
+def test_legacy_duplicate_role_rows_show_as_one_admin(client):
+    w = make_wallet(91)
+    grant({w.address: ["super_admin", "market_manager", "support_admin"]})
+    h = login(client, w)
+    assert [x["address"] for x in client.get("/api/admin/roles", headers=h).json()["items"]] == [w.address.lower()]
 
 
 def test_notice_setting_shows_publicly_and_is_audited(client, admin_headers):

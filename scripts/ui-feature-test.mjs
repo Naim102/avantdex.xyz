@@ -266,21 +266,15 @@ await test('admin: delete a project that has no market', async () => {
   await mustClick(admin, /^Delete$/)
   await waitFor(async () => !(await get('/projects/upcoming')).items.some((i) => i.id === created.id), 'deleted', 15000)
 })
-await test('admin: grant the on-chain manager role to another wallet (Admins page)', async () => {
+await test('admin: add an admin and allow it to start markets in one step; then remove it', async () => {
+  const W3 = '0x90F79bf6EB2c4f870365E785982E1f101E93b906'
   await admin.goto(BASE + '/admin/roles', { waitUntil: 'networkidle2' })
   await sleep(1500)
-  await typeInto(admin, '#oc-grant', '0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC')
-  await mustClick(admin, /^Grant on-chain access$/)
-  await waitFor(() => admin.evaluate(() => document.body.innerText.includes('Grant market manager')), 'tx step shown', 30000)
-})
-await test('admin: add a second admin wallet and remove it again', async () => {
-  await admin.goto(BASE + '/admin/roles', { waitUntil: 'networkidle2' })
-  await sleep(1000)
-  await typeInto(admin, '#ra', '0x90F79bf6EB2c4f870365E785982E1f101E93b906')
+  await typeInto(admin, '#ra', W3)
   await mustClick(admin, /^Add admin$/)
-  await waitFor(() => admin.evaluate(() => document.body.innerText.toLowerCase().includes('0x90f79bf6eb2c4f870365e785982e1f101e93b906')), 'added', 15000)
-  await admin.evaluate(() => { const r = [...document.querySelectorAll('table tbody tr')].find((x) => x.innerText.toLowerCase().includes('0x90f79bf6')); [...r.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Remove').click() })
-  await waitFor(() => admin.evaluate(() => !document.body.innerText.toLowerCase().includes('0x90f79bf6eb2c4f870365e785982e1f101e93b906')), 'removed', 15000)
+  await waitFor(() => admin.evaluate((w) => { const r = [...document.querySelectorAll('table tbody tr')].find((x) => x.innerText.toLowerCase().includes(w.toLowerCase())); return r && /Yes/.test(r.innerText) }, W3), 'added and allowed on-chain', 40000)
+  await admin.evaluate((w) => { const r = [...document.querySelectorAll('table tbody tr')].find((x) => x.innerText.toLowerCase().includes(w.toLowerCase())); [...r.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Remove').click() }, W3)
+  await waitFor(() => admin.evaluate((w) => !document.body.innerText.toLowerCase().includes(w.toLowerCase()), W3), 'removed', 15000)
 })
 
 // ============================================================ settlement: seller settles, buyer claims a default

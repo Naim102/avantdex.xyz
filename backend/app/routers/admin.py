@@ -33,7 +33,7 @@ from ..models import (
     IndexerState,
     utcnow,
 )
-from ..security import LEGACY_ROLES, ROLES, ApiError, Session_, audit, normalize_address, require_any_admin, role_label
+from ..security import ApiError, Session_, audit, normalize_address, require_any_admin, role_label
 from ..utils import BADGES, clean_text, iso, make_slug, project_private
 from .public import market_json, bulk_stats
 from .user import ProjectIn, _apply, dispute_json
@@ -505,20 +505,23 @@ def users(user: Session_ = Depends(require_any_admin), limit: int = Query(200, g
 
 @router.get("/roles")
 def roles(user: Session_ = Depends(require_any_admin), db: Session = Depends(get_db)) -> dict:
+    """Admin wallets, one row per wallet (legacy duplicate role rows are folded together)."""
     rows = list(db.scalars(select(AdminRole).order_by(AdminRole.id)))
+    first: dict[str, AdminRole] = {}
+    for r in rows:
+        first.setdefault(r.address, r)
     onchain: dict[str, dict] = {}
     try:  # read on-chain role holders for display (best effort)
         ex = get_exchange(get_web3())
         names = {"DEFAULT_ADMIN_ROLE": ex.functions.DEFAULT_ADMIN_ROLE().call(), "MARKET_MANAGER_ROLE": ex.functions.MARKET_MANAGER_ROLE().call(), "PAUSER_ROLE": ex.functions.PAUSER_ROLE().call()}
         from web3 import Web3
 
-        for addr in {r.address for r in rows}:
+        for addr in first:
             onchain[addr] = {n: ex.functions.hasRole(h, Web3.to_checksum_address(addr)).call() for n, h in names.items()}
     except Exception:
         onchain = {}
     return {
-        "available_roles": list(ROLES),
-        "items": [{"id": r.id, "address": r.address, "role": r.role, "granted_by": r.granted_by, "created_at": iso(r.created_at), "onchain": onchain.get(r.address)} for r in rows],
+        "items": [{"id": r.id, "address": a, "role": "admin", "granted_by": r.granted_by, "created_at": iso(r.created_at), "onchain": onchain.get(a)} for a, r in first.items()],
     }
 
 
@@ -530,27 +533,27 @@ class RoleIn(BaseModel):
 
 @router.post("/roles")
 def grant_role(body: RoleIn, user: Session_ = Depends(require_any_admin), db: Session = Depends(get_db)) -> dict:
-    """Add an admin. There is one admin level; `role` is accepted for older clients and must be a known name."""
+    """Add an admin wallet. There is one admin level; `role` is accepted only for older clients."""
     addr = normalize_address(body.address)
-    if body.role not in ROLES and body.role not in LEGACY_ROLES:
-        raise ApiError(422, "validation_error", "role must be super_admin")
     if db.scalar(select(AdminRole.id).where(AdminRole.address == addr)):
         raise ApiError(409, "exists", "This wallet is already an admin")
     db.add(AdminRole(address=addr, role="super_admin", granted_by=user.address))
-    audit(db, user, "role.grant", "admin_role", addr, None, {"role": "super_admin"})
+    audit(db, user, "admin.add", "admin", addr, None, None)
     db.commit()
     return {"ok": True}
 
 
 @router.delete("/roles/{rid}")
 def revoke_role(rid: int, user: Session_ = Depends(require_any_admin), db: Session = Depends(get_db)) -> dict:
+    """Remove an admin wallet (all of its rows)."""
     r = db.get(AdminRole, rid)
     if r is None:
-        raise ApiError(404, "not_found", "Role assignment not found")
-    if r.role == "super_admin" and (db.scalar(select(func.count(AdminRole.id)).where(AdminRole.role == "super_admin")) or 0) <= 1:
-        raise ApiError(409, "last_super_admin", "Cannot remove the last super admin")
-    audit(db, user, "role.revoke", "admin_role", r.address, {"role": r.role}, None)
-    db.delete(r)
+        raise ApiError(404, "not_found", "Admin not found")
+    if (db.scalar(select(func.count(func.distinct(AdminRole.address)))) or 0) <= 1:
+        raise ApiError(409, "last_super_admin", "Cannot remove the last admin")
+    audit(db, user, "admin.remove", "admin", r.address, None, None)
+    for row in list(db.scalars(select(AdminRole).where(AdminRole.address == r.address))):
+        db.delete(row)
     db.commit()
     return {"ok": True}
 

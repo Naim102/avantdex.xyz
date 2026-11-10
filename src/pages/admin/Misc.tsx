@@ -117,91 +117,88 @@ export function Users() {
 
 interface RoleRow { id: number; address: string; role: string; granted_by: string | null; created_at: string; onchain: Record<string, boolean> | null }
 
-/** On-chain permissions are separate from dashboard admin: creating/activating markets is signed by a wallet holding MARKET_MANAGER on the contract. */
-function OnChainAccess() {
+/** Reads whether the connected wallet is the contract admin (the only wallet that can allow others to create markets). */
+function useContractAdmin() {
   const { data: cfg } = useConfig()
   const { address } = useAccount()
-  const tx = useTx()
-  const [target, setTarget] = useState('')
-  const [pauser, setPauser] = useState(false)
   const base = { address: cfg?.exchange_address, abi: exchangeAbi, chainId: CHAIN_ID } as const
-  const on = { enabled: !!cfg }
-  const adminRole = useReadContract({ ...base, functionName: 'DEFAULT_ADMIN_ROLE', query: on })
-  const mgrRole = useReadContract({ ...base, functionName: 'MARKET_MANAGER_ROLE', query: on })
-  const pauserRole = useReadContract({ ...base, functionName: 'PAUSER_ROLE', query: on })
-  const has = (role: `0x${string}` | undefined) => ({ query: { enabled: !!role && !!address }, args: role && address ? ([role, address] as const) : undefined })
-  const isAdmin = useReadContract({ ...base, functionName: 'hasRole', ...has(adminRole.data) })
-  const isMgr = useReadContract({ ...base, functionName: 'hasRole', ...has(mgrRole.data) })
-  const valid = /^0x[0-9a-fA-F]{40}$/.test(target)
-  const grant = async () => {
-    if (!cfg || !mgrRole.data || !valid) return
-    const r = await tx.run('Grant market manager', { address: cfg.exchange_address, abi: exchangeAbi, functionName: 'grantRole', args: [mgrRole.data, target] })
-    if (r && pauser && pauserRole.data) await tx.run('Grant pauser', { address: cfg.exchange_address, abi: exchangeAbi, functionName: 'grantRole', args: [pauserRole.data, target] })
-    if (r) setTarget('')
-  }
-  return (
-    <div className="glass space-y-3 rounded-3xl p-4">
-      <h3 className="display text-lg font-semibold">On-chain access (market creation)</h3>
-      <Notice tone={isMgr.data ? 'ok' : 'warn'}>
-        {!address
-          ? 'Connect a wallet to see its on-chain access.'
-          : isMgr.data
-            ? 'This wallet holds MARKET_MANAGER on the contract: it can create, activate, suspend and settle markets.'
-            : 'This wallet does not hold MARKET_MANAGER on the contract, so Create on-chain and Activate will fail. Ask the contract admin wallet to grant it below.'}
-      </Notice>
-      {isAdmin.data ? (
-        <>
-          <Field label="Wallet to grant market manager access" htmlFor="oc-grant" hint="Only the contract DEFAULT_ADMIN wallet (you are connected as it) can do this. It never gives access to escrowed funds.">
-            <input id="oc-grant" className="field mono text-xs" placeholder="0x…" value={target} onChange={(e) => setTarget(e.target.value.trim())} />
-          </Field>
-          <label className="flex items-center gap-2 text-sm font-medium">
-            <input type="checkbox" checked={pauser} onChange={(e) => setPauser(e.target.checked)} /> Also grant PAUSER (can pause new orders)
-          </label>
-          <button className="btn btn-primary" disabled={!valid || tx.busy} onClick={() => void grant()}>
-            {tx.busy ? <Spinner /> : 'Grant on-chain access'}
-          </button>
-          <TxPanel tx={tx} />
-        </>
-      ) : (
-        <p className="text-sm text-[var(--subtle)]">Granting on-chain access requires the contract DEFAULT_ADMIN wallet.</p>
-      )}
-    </div>
-  )
+  const adminRole = useReadContract({ ...base, functionName: 'DEFAULT_ADMIN_ROLE', query: { enabled: !!cfg } })
+  const mgrRole = useReadContract({ ...base, functionName: 'MARKET_MANAGER_ROLE', query: { enabled: !!cfg } })
+  const isAdmin = useReadContract({ ...base, functionName: 'hasRole', args: adminRole.data && address ? [adminRole.data, address] : undefined, query: { enabled: !!adminRole.data && !!address } })
+  return { cfg, isContractAdmin: isAdmin.data === true, mgrRole: mgrRole.data, address }
 }
 
 export function Roles() {
   const qc = useQueryClient()
+  const tx = useTx()
+  const { cfg, isContractAdmin, mgrRole, address: me } = useContractAdmin()
   const { data } = useQuery({ queryKey: ['admin-roles'], queryFn: () => api.get<{ items: RoleRow[] }>('/admin/roles') })
   const [addr, setAddr] = useState('')
+  const [allowMarkets, setAllowMarkets] = useState(true)
   const [err, setErr] = useState('')
+  const valid = /^0x[0-9a-fA-F]{40}$/.test(addr)
   const refresh = () => void qc.invalidateQueries({ queryKey: ['admin-roles'] })
-  const grant = async () => {
+  const allow = async (wallet: string) => {
+    if (!cfg || !mgrRole) return
+    await tx.run('Allow market creation', { address: cfg.exchange_address, abi: exchangeAbi, functionName: 'grantRole', args: [mgrRole, wallet] })
+    refresh()
+  }
+  const add = async () => {
     setErr('')
     try {
       await api.post('/admin/roles', { address: addr })
+      if (allowMarkets && isContractAdmin) await allow(addr)
       setAddr('')
       refresh()
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Failed')
     }
   }
+  const items = data?.items ?? []
+  const mine = items.find((r) => r.address.toLowerCase() === me?.toLowerCase())
+  const canMarkets = (r: RoleRow) => !!r.onchain?.MARKET_MANAGER_ROLE
   return (
     <>
       <h2 className="display text-2xl font-semibold">Admins</h2>
-      <Notice>Every admin can do every dashboard action (review, approve, list, manage markets, settings). Admins can also be set with BOOTSTRAP_ADMIN_ADDRESSES / ADMIN_ROLES in the environment. On-chain powers are separate contract roles, shown in the table and managed below.</Notice>
-      <div className="glass space-y-3 rounded-3xl p-4">
+      <Notice>
+        Every admin can do everything in this dashboard. Starting trading on a market is also an on-chain transaction, and the contract only accepts it from a wallet it has allowed to create markets. That permission is given once per wallet, by the contract admin wallet.
+      </Notice>
+      {me && mine && !canMarkets(mine) && (
+        <Notice tone="warn">
+          The wallet you are connected with ({shortAddr(me)}) is an admin here but is not yet allowed to create markets on-chain.
+          {isContractAdmin ? ' Use the button next to it below.' : ' Connect the contract admin wallet, open this page and press "Allow markets" next to this wallet.'}
+        </Notice>
+      )}
+      <div className="glass space-y-3 p-4">
         <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
-          <Field label="Add admin (wallet address)" htmlFor="ra"><input id="ra" className="field mono text-xs" value={addr} onChange={(e) => setAddr(e.target.value.trim())} placeholder="0x…" /></Field>
-          <button className="btn btn-primary" disabled={!/^0x[0-9a-fA-F]{40}$/.test(addr)} onClick={() => void grant()}>Add admin</button>
+          <Field label="Add an admin (wallet address)" htmlFor="ra">
+            <input id="ra" className="field mono text-xs" value={addr} onChange={(e) => setAddr(e.target.value.trim())} placeholder="0x…" />
+          </Field>
+          <button className="btn btn-primary" disabled={!valid || tx.busy} onClick={() => void add()}>{tx.busy ? <Spinner /> : 'Add admin'}</button>
         </div>
+        {isContractAdmin ? (
+          <label className="flex items-center gap-2 text-sm font-medium">
+            <input type="checkbox" checked={allowMarkets} onChange={(e) => setAllowMarkets(e.target.checked)} /> Also allow this wallet to create and start markets (one extra transaction from your wallet)
+          </label>
+        ) : (
+          <p className="text-xs text-[var(--muted)]">To also allow a new admin to start markets, use this page while connected as the contract admin wallet.</p>
+        )}
         {err && <Notice tone="error">{err}</Notice>}
-        <DataTable head={['Wallet', 'On-chain', 'Added by', '']} rows={(data?.items ?? []).map((r) => [
-          <span key="a" className="mono break-all text-xs">{r.address}</span>,
-          r.onchain ? <span key="o" className="text-xs">{Object.entries(r.onchain).filter(([, v]) => v).map(([k]) => k.replace('_ROLE', '')).join(', ') || 'none'}</span> : '–',
-          shortAddr(r.granted_by), <button key="d" className="btn btn-danger !min-h-8 !px-3 !py-1 text-xs" onClick={() => void api.del(`/admin/roles/${r.id}`).then(refresh).catch((e: Error) => setErr(e.message))}>Remove</button>,
-        ])} />
+        <DataTable
+          head={['Wallet', 'Can start markets', 'Added by', '']}
+          rows={items.map((r) => [
+            <span key="a" className="mono break-all text-xs">{r.address}</span>,
+            r.onchain ? (
+              canMarkets(r) ? <span key="o" className="text-xs font-semibold text-[var(--success)]">Yes</span> : isContractAdmin ? (
+                <button key="o" className="btn btn-primary !min-h-8 !px-3 !py-1 text-xs" disabled={tx.busy} onClick={() => void allow(r.address)}>Allow markets</button>
+              ) : <span key="o" className="text-xs text-[var(--muted)]">Not yet</span>
+            ) : '–',
+            shortAddr(r.granted_by),
+            <button key="d" className="btn btn-danger !min-h-8 !px-3 !py-1 text-xs" onClick={() => void api.del(`/admin/roles/${r.id}`).then(refresh).catch((e: Error) => setErr(e.message))}>Remove</button>,
+          ])}
+        />
+        <TxPanel tx={tx} />
       </div>
-      <OnChainAccess />
     </>
   )
 }

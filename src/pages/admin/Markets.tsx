@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAccount, useReadContract } from 'wagmi'
 import { toast } from 'sonner'
@@ -75,7 +76,7 @@ function MarketActions({ m, cfg }: { m: AdminMarket; cfg: AppConfig }) {
 
   return (
     <div className="space-y-3 rounded-2xl bg-[var(--tint)] p-3 text-sm">
-      {hasRole === false && <Notice tone="warn">The connected wallet does not hold the on-chain MARKET_MANAGER_ROLE. Transactions below will fail. Switch to the manager wallet.</Notice>}
+      {hasRole === false && <Notice tone="warn">The connected wallet does not hold the on-chain MARKET_MANAGER_ROLE. Transactions below will fail. Switch to the contract admin wallet, or open <Link to="/admin/roles" className="underline">Admins</Link> with it and press Allow markets next to this wallet.</Notice>}
       {status === 'draft' && (
         <div className="space-y-2">
           <p className="text-[var(--subtle)]">Step 1: create the market on-chain with the exact draft parameters. {m.created_by && `Draft by ${shortAddr(m.created_by)}.`}</p>
