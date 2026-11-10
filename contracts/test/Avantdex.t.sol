@@ -49,9 +49,11 @@ contract AvantdexTest is Test {
 
     // ------------------------------------------------------------------ helpers
 
+    uint256 private refNonce;
+
     function _newMarket(address tok) internal returns (uint256 id) {
         vm.startPrank(admin);
-        id = ex.createMarket(tok, LOT, TICK, 1, 10_000, tStart, tEnd, keccak256("m"));
+        id = ex.createMarket(tok, LOT, TICK, 1, 10_000, tStart, tEnd, keccak256(abi.encode("m", ++refNonce)), 18);
         ex.activateMarket(id);
         vm.stopPrank();
     }
@@ -144,27 +146,27 @@ contract AvantdexTest is Test {
     function test_createMarket_validationAndAccess() public {
         vm.prank(stranger);
         vm.expectRevert();
-        ex.createMarket(address(0), LOT, TICK, 1, 10, tStart, tEnd, 0);
+        ex.createMarket(address(0), LOT, TICK, 1, 10, tStart, tEnd, 0, 18);
 
         vm.startPrank(admin);
         vm.expectRevert(AvantdexExchange.InvalidMarketParams.selector);
-        ex.createMarket(address(0), 0, TICK, 1, 10, tStart, tEnd, 0);
+        ex.createMarket(address(0), 0, TICK, 1, 10, tStart, tEnd, 0, 18);
         vm.expectRevert(AvantdexExchange.InvalidMarketParams.selector);
-        ex.createMarket(address(0), LOT, 0, 1, 10, tStart, tEnd, 0);
+        ex.createMarket(address(0), LOT, 0, 1, 10, tStart, tEnd, 0, 18);
         vm.expectRevert(AvantdexExchange.InvalidMarketParams.selector);
-        ex.createMarket(address(0), LOT, TICK, 5, 4, tStart, tEnd, 0);
+        ex.createMarket(address(0), LOT, TICK, 5, 4, tStart, tEnd, 0, 18);
         vm.expectRevert(AvantdexExchange.InvalidMarketParams.selector);
-        ex.createMarket(address(0), LOT, TICK, 1, 10, tStart, tStart + 30 minutes, 0);
+        ex.createMarket(address(0), LOT, TICK, 1, 10, tStart, tStart + 30 minutes, 0, 18);
         vm.expectRevert(AvantdexExchange.InvalidMarketParams.selector);
-        ex.createMarket(address(0), LOT, TICK, 1, 10, tStart - 2 days, tStart - 1 days, 0);
+        ex.createMarket(address(0), LOT, TICK, 1, 10, tStart - 2 days, tStart - 1 days, 0, 18);
         vm.expectRevert(AvantdexExchange.NotAContract.selector);
-        ex.createMarket(alice, LOT, TICK, 1, 10, tStart, tEnd, 0);
+        ex.createMarket(alice, LOT, TICK, 1, 10, tStart, tEnd, 0, 18);
         vm.stopPrank();
     }
 
     function test_marketStatusMachine() public {
         vm.startPrank(admin);
-        uint256 id = ex.createMarket(address(0), LOT, TICK, 1, 10, tStart, tEnd, 0);
+        uint256 id = ex.createMarket(address(0), LOT, TICK, 1, 10, tStart, tEnd, 0, 18);
         // Setup: cannot suspend/resume/open settlement
         vm.expectRevert(AvantdexExchange.InvalidMarketStatus.selector);
         ex.suspendMarket(id);
@@ -265,7 +267,7 @@ contract AvantdexTest is Test {
         // Setup market and not-yet-started market
         vm.warp(tStart);
         vm.prank(admin);
-        uint256 s = ex.createMarket(address(0), LOT, TICK, 1, 10, tStart + 1 days, tEnd, 0);
+        uint256 s = ex.createMarket(address(0), LOT, TICK, 1, 10, tStart + 1 days, tEnd, 0, 18);
         vm.prank(alice);
         vm.expectRevert(AvantdexExchange.MarketNotTradable.selector);
         ex.placeOrder(s, AvantdexExchange.Side.Buy, ONE, 1, tEnd, false, 0, _none());
@@ -490,7 +492,7 @@ contract AvantdexTest is Test {
     function test_roundingDustReturnedWhenMakerFullyFilled() public {
         // tick = 1 so values are not multiples of 200 and per-fill fee floors lose dust
         vm.startPrank(admin);
-        uint256 m1 = ex.createMarket(address(0), LOT, 1, 1, 10_000, tStart, tEnd, 0);
+        uint256 m1 = ex.createMarket(address(0), LOT, 1, 1, 10_000, tStart, tEnd, 0, 18);
         ex.activateMarket(m1);
         vm.stopPrank();
 
@@ -574,11 +576,13 @@ contract AvantdexTest is Test {
         vm.expectRevert(AvantdexExchange.SettlementNotOpen.selector);
         ex.settleTrade(id);
         _openSettlement(1 days);
-        vm.prank(alice);
-        vm.expectRevert(AvantdexExchange.NotSeller.selector);
+        // anyone may trigger delivery: the token still moves from the seller (who approved it) to the buyer
+        uint256 sellerUsdc = usdc.balanceOf(bob);
+        uint256 buyerTokens = token.balanceOf(alice);
+        vm.prank(address(0xBEEF));
         ex.settleTrade(id);
-        vm.prank(bob);
-        ex.settleTrade(id);
+        assertEq(token.balanceOf(alice) - buyerTokens, 10 * LOT, "buyer received the tokens");
+        assertGt(usdc.balanceOf(bob), sellerUsdc, "seller was paid");
         vm.prank(bob);
         vm.expectRevert(AvantdexExchange.TradeNotOpen.selector);
         ex.settleTrade(id);
@@ -634,12 +638,10 @@ contract AvantdexTest is Test {
         ex.claimDefault(id);
 
         vm.warp(block.timestamp + 1 hours + 1);
-        vm.prank(bob);
-        vm.expectRevert(AvantdexExchange.NotBuyer.selector);
-        ex.claimDefault(id);
 
+        // anyone may trigger the claim, the payout always goes to the buyer
         uint256 before_ = usdc.balanceOf(alice);
-        vm.prank(alice);
+        vm.prank(address(0xBEEF));
         ex.claimDefault(id);
         assertEq(usdc.balanceOf(alice) - before_, 2 * value + _fee(value));
         assertEq(usdc.balanceOf(collector), 0, "no platform fee on failure");
@@ -727,6 +729,93 @@ contract AvantdexTest is Test {
         ex.cancelMarket(mid);
         ex.refundTrade(id);
         assertEq(uint8(ex.getTrade(id).status), uint8(AvantdexExchange.TradeStatus.Refunded));
+    }
+
+    // ------------------------------------------------------------------ v2
+
+    function test_v2_cancelAfterSettlementOpened_onlyDuringGrace() public {
+        uint256 id = _trade(ONE, 10);
+        _openSettlement(1 days);
+        vm.warp(block.timestamp + ex.CANCEL_GRACE() + 1);
+        vm.prank(admin);
+        vm.expectRevert(AvantdexExchange.CancelWindowClosed.selector);
+        ex.cancelMarket(mid);
+        // the default rules now decide: after the deadline anyone triggers it and the buyer is paid
+        vm.warp(block.timestamp + 1 days);
+        uint256 before_ = usdc.balanceOf(alice);
+        ex.claimDefault(id);
+        assertGt(usdc.balanceOf(alice), before_);
+    }
+
+    function test_v2_graceEqualsMinimumSettlementWindow() public view {
+        assertEq(ex.CANCEL_GRACE(), ex.MIN_SETTLEMENT_WINDOW());
+    }
+
+    function test_v2_cancelAtExactlyTheGraceEndStillWorks() public {
+        _trade(ONE, 10);
+        _openSettlement(1 days);
+        vm.warp(block.timestamp + ex.CANCEL_GRACE());
+        vm.prank(admin);
+        ex.cancelMarket(mid);
+        assertEq(uint8(ex.getMarket(mid).status), uint8(AvantdexExchange.MarketStatus.Cancelled));
+    }
+
+    function test_v2_createMarket_checksDecimalsOfAKnownToken() public {
+        vm.startPrank(admin);
+        vm.expectRevert(AvantdexExchange.DecimalsMismatch.selector);
+        ex.createMarket(address(token), LOT, TICK, 1, 10, tStart, tEnd, keccak256("d1"), 6);
+        vm.expectRevert(AvantdexExchange.DecimalsMismatch.selector);
+        ex.createMarket(address(this), LOT, TICK, 1, 10, tStart, tEnd, keccak256("d2"), 18); // a contract with no decimals()
+        vm.expectRevert(AvantdexExchange.InvalidMarketParams.selector);
+        ex.createMarket(address(0), LOT, TICK, 1, 10, tStart, tEnd, keccak256("d3"), 37);
+        uint256 id = ex.createMarket(address(token), LOT, TICK, 1, 10, tStart, tEnd, keccak256("d4"), 18);
+        assertEq(ex.getMarket(id).tokenDecimals, 18);
+        vm.stopPrank();
+    }
+
+    function test_v2_openSettlement_rejectsATokenWithOtherDecimals() public {
+        vm.startPrank(admin);
+        uint256 id = ex.createMarket(address(0), 1e6, 1e4, 1, 10, tStart, tEnd, keccak256("d5"), 6); // lot = 1 token with 6 decimals
+        ex.activateMarket(id);
+        vm.expectRevert(AvantdexExchange.DecimalsMismatch.selector);
+        ex.openSettlement(id, address(token), 1 days); // an 18 decimals token
+        vm.expectRevert(AvantdexExchange.DecimalsMismatch.selector);
+        ex.openSettlement(id, address(this), 1 days);
+        vm.stopPrank();
+    }
+
+    function test_v2_metadataRefIsUsedOnce_zeroIsExempt() public {
+        vm.startPrank(admin);
+        bytes32 ref = keccak256("same");
+        ex.createMarket(address(0), LOT, TICK, 1, 10, tStart, tEnd, ref, 18);
+        assertTrue(ex.metadataRefUsed(ref));
+        vm.expectRevert(AvantdexExchange.MetadataRefUsed.selector);
+        ex.createMarket(address(0), LOT, TICK, 1, 10, tStart, tEnd, ref, 18);
+        ex.createMarket(address(0), LOT, TICK, 1, 10, tStart, tEnd, 0, 18);
+        ex.createMarket(address(0), LOT, TICK, 1, 10, tStart, tEnd, 0, 18);
+        vm.stopPrank();
+    }
+
+    function test_v2_aStrangerCannotMoveFundsToThemselves() public {
+        uint256 id = _trade(ONE, 10);
+        _openSettlement(1 hours);
+        address stranger = address(0xBEEF);
+        uint256 strangerBefore = usdc.balanceOf(stranger);
+        vm.warp(block.timestamp + 1 hours + 1);
+        vm.prank(stranger);
+        ex.claimDefault(id);
+        assertEq(usdc.balanceOf(stranger), strangerBefore, "the caller gets nothing");
+    }
+
+    function test_v2_aSettleByAStrangerNeedsTheSellersApproval() public {
+        uint256 id = _trade(ONE, 10);
+        _openSettlement(1 days);
+        vm.prank(bob);
+        token.approve(address(ex), 0); // the seller did not approve the token
+        vm.prank(address(0xBEEF));
+        vm.expectRevert();
+        ex.settleTrade(id);
+        assertEq(uint8(ex.getTrade(id).status), uint8(AvantdexExchange.TradeStatus.Open));
     }
 
     function test_abandonedMarket_refundableAfterDelay() public {
@@ -1057,7 +1146,7 @@ contract AvantdexInvariantTest is Test {
         token = new MockERC20();
         ex = new AvantdexExchange(address(usdc), collector, admin);
         vm.startPrank(admin);
-        uint256 mid = ex.createMarket(address(0), 1 ether, 1e4, 1, 1000, uint64(block.timestamp), uint64(block.timestamp + 30 days), 0);
+        uint256 mid = ex.createMarket(address(0), 1 ether, 1e4, 1, 1000, uint64(block.timestamp), uint64(block.timestamp + 30 days), 0, 18);
         ex.activateMarket(mid);
         vm.stopPrank();
         handler = new AvantdexHandler(ex, usdc, token, admin, mid, uint64(block.timestamp + 30 days));

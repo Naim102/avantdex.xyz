@@ -62,6 +62,19 @@ export const exchangeAbi = [
   },
   {
     "type": "function",
+    "name": "CANCEL_GRACE",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint64",
+        "internalType": "uint64"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "DEFAULT_ADMIN_ROLE",
     "inputs": [],
     "outputs": [
@@ -317,6 +330,11 @@ export const exchangeAbi = [
         "name": "metadataRef",
         "type": "bytes32",
         "internalType": "bytes32"
+      },
+      {
+        "name": "tokenDecimals",
+        "type": "uint8",
+        "internalType": "uint8"
       }
     ],
     "outputs": [
@@ -466,6 +484,11 @@ export const exchangeAbi = [
             "name": "metadataRef",
             "type": "bytes32",
             "internalType": "bytes32"
+          },
+          {
+            "name": "tokenDecimals",
+            "type": "uint8",
+            "internalType": "uint8"
           }
         ]
       }
@@ -693,6 +716,25 @@ export const exchangeAbi = [
         "name": "",
         "type": "uint256",
         "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "metadataRefUsed",
+    "inputs": [
+      {
+        "name": "",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
       }
     ],
     "stateMutability": "view"
@@ -1111,6 +1153,12 @@ export const exchangeAbi = [
         "type": "uint64",
         "indexed": false,
         "internalType": "uint64"
+      },
+      {
+        "name": "tokenDecimals",
+        "type": "uint8",
+        "indexed": false,
+        "internalType": "uint8"
       }
     ],
     "anonymous": false
@@ -1536,7 +1584,17 @@ export const exchangeAbi = [
   },
   {
     "type": "error",
+    "name": "CancelWindowClosed",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "DeadlineNotReached",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "DecimalsMismatch",
     "inputs": []
   },
   {
@@ -1601,12 +1659,12 @@ export const exchangeAbi = [
   },
   {
     "type": "error",
-    "name": "NotAContract",
+    "name": "MetadataRefUsed",
     "inputs": []
   },
   {
     "type": "error",
-    "name": "NotBuyer",
+    "name": "NotAContract",
     "inputs": []
   },
   {
@@ -1617,11 +1675,6 @@ export const exchangeAbi = [
   {
     "type": "error",
     "name": "NotRefundable",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "NotSeller",
     "inputs": []
   },
   {

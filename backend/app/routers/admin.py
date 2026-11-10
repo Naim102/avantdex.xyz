@@ -302,6 +302,7 @@ def onchain_params(m: Market) -> dict:
         "tradingStart": int(_utc(m.trading_start).timestamp()),
         "tradingEnd": int(_utc(m.trading_end).timestamp()),
         "metadataRef": m.metadata_ref,
+        "tokenDecimals": m.token_decimals,
     }
 
 
@@ -383,13 +384,13 @@ def verify_config(mid: int, user: Session_ = Depends(require_any_admin), db: Ses
     p = onchain_params(m)
     expected = {
         "lot_size": int(p["lotSize"]), "tick_size": int(p["tickSize"]), "min_lots": int(p["minLots"]), "max_lots": int(p["maxLots"]),
-        "trading_start": p["tradingStart"], "trading_end": p["tradingEnd"], "metadata_ref": p["metadataRef"],
+        "trading_start": p["tradingStart"], "trading_end": p["tradingEnd"], "metadata_ref": p["metadataRef"], "token_decimals": p["tokenDecimals"],
         "token": p["token"].lower(),
     }
     actual = {
         "lot_size": chain["lot_size"], "tick_size": chain["tick_size"], "min_lots": chain["min_lots"], "max_lots": chain["max_lots"],
         "trading_start": int(chain["trading_start"].timestamp()), "trading_end": int(chain["trading_end"].timestamp()),
-        "metadata_ref": chain["metadata_ref"], "token": chain["token"],
+        "metadata_ref": chain["metadata_ref"], "token": chain["token"], "token_decimals": chain["token_decimals"],
     }
     checks = [{"field": k, "draft": str(expected[k]), "chain": str(actual[k]), "ok": expected[k] == actual[k]} for k in expected]
     ok = all(c["ok"] for c in checks)

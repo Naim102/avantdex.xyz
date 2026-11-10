@@ -5,6 +5,7 @@ import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 /**
@@ -27,6 +28,16 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
  *  - USDC on Arc reverts for blocklisted accounts, so every payout is push-with-fallback to `claimable`.
  *  - The contract accepts no native value.
  *
+ * v2 changes (see docs/CONTRACT-V2.md)
+ *  - A market stores the token's decimals; `createMarket` (when the token is known) and `openSettlement` revert
+ *    unless the token's own `decimals()` equals it, so a wrong lot size can no longer reach settlement.
+ *  - `cancelMarket` is closed once settlement has been open for CANCEL_GRACE (one hour, never past the earliest
+ *    possible deadline). A manager can still undo a mistaken `openSettlement` quickly, but cannot rescue
+ *    defaulting sellers afterwards.
+ *  - `claimDefault` and `settleTrade` can be called by anyone: the payout still goes to the buyer, and the token
+ *    still moves from the seller (who must have approved it) to the buyer, so a keeper can trigger both.
+ *  - A non-zero `metadataRef` can be used by one market only.
+ *
  * NOT AUDITED. Testnet use only.
  */
 contract AvantdexExchange is AccessControl, Pausable, ReentrancyGuard {
@@ -48,6 +59,8 @@ contract AvantdexExchange is AccessControl, Pausable, ReentrancyGuard {
     uint64 public constant MAX_SETTLEMENT_WINDOW = 14 days;
     /// @notice Total settlement time (including extensions) can never exceed this after settlement opens.
     uint64 public constant MAX_SETTLEMENT_TOTAL = 30 days;
+    /// @notice A mistaken `openSettlement` can be undone by `cancelMarket` only during this time after it opened.
+    uint64 public constant CANCEL_GRACE = 1 hours;
     /// @notice If a market never reaches settlement, anyone can refund trades this long after trading end.
     uint64 public constant ABANDON_DELAY = 90 days;
     /// @notice Minimum order value in USDC base units (1 USDC, 6 decimals).
@@ -75,6 +88,7 @@ contract AvantdexExchange is AccessControl, Pausable, ReentrancyGuard {
         uint128 maxLots;
         uint32 openTrades;
         bytes32 metadataRef; // keccak256(slug) of the off-chain market record
+        uint8 tokenDecimals; // decimals of the project token; checked against the token when it is known
     }
 
     struct Order {
@@ -123,6 +137,8 @@ contract AvantdexExchange is AccessControl, Pausable, ReentrancyGuard {
     mapping(uint256 => Order) private _orders;
     mapping(uint256 => Trade) private _trades;
     mapping(address => uint256) public claimable;
+    /// @notice True once a non-zero metadataRef has been used by a market (one market per off-chain record).
+    mapping(bytes32 => bool) public metadataRefUsed;
 
     // ------------------------------------------------------------------ events
 
@@ -135,7 +151,8 @@ contract AvantdexExchange is AccessControl, Pausable, ReentrancyGuard {
         uint128 minLots,
         uint128 maxLots,
         uint64 tradingStart,
-        uint64 tradingEnd
+        uint64 tradingEnd,
+        uint8 tokenDecimals
     );
     event MarketStatusChanged(uint256 indexed marketId, MarketStatus status);
     event SettlementOpened(uint256 indexed marketId, address token, uint64 openedAt, uint64 deadline);
@@ -187,8 +204,9 @@ contract AvantdexExchange is AccessControl, Pausable, ReentrancyGuard {
     error OrderNotOpen();
     error NothingFilled();
     error TradeNotOpen();
-    error NotSeller();
-    error NotBuyer();
+    error DecimalsMismatch();
+    error MetadataRefUsed();
+    error CancelWindowClosed();
     error SettlementNotOpen();
     error DeadlineNotReached();
     error InvalidSettlementWindow();
@@ -247,13 +265,22 @@ contract AvantdexExchange is AccessControl, Pausable, ReentrancyGuard {
         uint128 maxLots,
         uint64 tradingStart,
         uint64 tradingEnd,
-        bytes32 metadataRef
+        bytes32 metadataRef,
+        uint8 tokenDecimals
     ) external onlyRole(MARKET_MANAGER_ROLE) returns (uint256 marketId) {
         if (lotSize == 0 || tickSize == 0 || minLots == 0 || maxLots < minLots) revert InvalidMarketParams();
         if (tradingEnd <= block.timestamp || tradingEnd < tradingStart + MIN_TRADING_DURATION) {
             revert InvalidMarketParams();
         }
-        if (token != address(0) && token.code.length == 0) revert NotAContract();
+        if (tokenDecimals > 36) revert InvalidMarketParams();
+        if (token != address(0)) {
+            if (token.code.length == 0) revert NotAContract();
+            _requireDecimals(token, tokenDecimals);
+        }
+        if (metadataRef != bytes32(0)) {
+            if (metadataRefUsed[metadataRef]) revert MetadataRefUsed();
+            metadataRefUsed[metadataRef] = true;
+        }
 
         marketId = ++marketCount;
         Market storage m = _markets[marketId];
@@ -266,8 +293,9 @@ contract AvantdexExchange is AccessControl, Pausable, ReentrancyGuard {
         m.tradingStart = tradingStart;
         m.tradingEnd = tradingEnd;
         m.metadataRef = metadataRef;
+        m.tokenDecimals = tokenDecimals;
 
-        emit MarketCreated(marketId, metadataRef, token, lotSize, tickSize, minLots, maxLots, tradingStart, tradingEnd);
+        emit MarketCreated(marketId, metadataRef, token, lotSize, tickSize, minLots, maxLots, tradingStart, tradingEnd, tokenDecimals);
         emit MarketStatusChanged(marketId, MarketStatus.Setup);
     }
 
@@ -292,11 +320,18 @@ contract AvantdexExchange is AccessControl, Pausable, ReentrancyGuard {
         emit MarketStatusChanged(marketId, MarketStatus.Live);
     }
 
-    /// @notice TGE cancelled: every open trade becomes refundable with no fee and no penalty.
+    /**
+     * @notice TGE cancelled: every open trade becomes refundable with no fee and no penalty.
+     * Allowed while the market is Setup, Live or Suspended, and for CANCEL_GRACE after settlement opened (to undo a
+     * mistake). After that the settlement deadline rules: a manager cannot cancel away a default.
+     */
     function cancelMarket(uint256 marketId) external onlyRole(MARKET_MANAGER_ROLE) {
         Market storage m = _market(marketId);
         MarketStatus s = m.status;
         if (s == MarketStatus.Completed || s == MarketStatus.Cancelled) revert InvalidMarketStatus();
+        if (s == MarketStatus.SettlementOpen && block.timestamp > uint256(m.settlementOpenedAt) + CANCEL_GRACE) {
+            revert CancelWindowClosed();
+        }
         m.status = MarketStatus.Cancelled;
         emit MarketStatusChanged(marketId, MarketStatus.Cancelled);
     }
@@ -316,6 +351,7 @@ contract AvantdexExchange is AccessControl, Pausable, ReentrancyGuard {
         }
         if (token == address(0) || token.code.length == 0) revert NotAContract();
         if (m.token != address(0) && m.token != token) revert TokenMismatch();
+        _requireDecimals(token, m.tokenDecimals);
 
         m.token = token;
         m.status = MarketStatus.SettlementOpen;
@@ -436,13 +472,13 @@ contract AvantdexExchange is AccessControl, Pausable, ReentrancyGuard {
     // ------------------------------------------------------------------ settlement
 
     /**
-     * @notice Seller delivers the token atomically and is paid. Allowed after settlement opened, also after the
-     * deadline, until the buyer claims the default.
+     * @notice Delivers the token from the seller to the buyer atomically and pays the seller. Allowed after settlement
+     * opened, also after the deadline, until the default is claimed. Anyone may call it, but the token is pulled from
+     * the seller's own balance and allowance, so it only works for a seller who approved the exchange.
      */
     function settleTrade(uint256 tradeId) external nonReentrant {
         Trade storage t = _trades[tradeId];
         if (t.status != TradeStatus.Open) revert TradeNotOpen();
-        if (msg.sender != t.seller) revert NotSeller();
         Market storage m = _markets[t.marketId];
         if (m.status != MarketStatus.SettlementOpen) revert SettlementNotOpen();
 
@@ -468,11 +504,11 @@ contract AvantdexExchange is AccessControl, Pausable, ReentrancyGuard {
         emit FeeCollected(tradeId, feeCollector, fees);
     }
 
-    /// @notice Buyer claims payment + seller collateral after the settlement deadline. No platform fee.
+    /// @notice Pays the buyer payment + seller collateral after the settlement deadline. No platform fee. Anyone may
+    /// trigger it (a keeper, the buyer, the seller); the money always goes to the buyer.
     function claimDefault(uint256 tradeId) external nonReentrant {
         Trade storage t = _trades[tradeId];
         if (t.status != TradeStatus.Open) revert TradeNotOpen();
-        if (msg.sender != t.buyer) revert NotBuyer();
         Market storage m = _markets[t.marketId];
         if (m.status != MarketStatus.SettlementOpen) revert SettlementNotOpen();
         if (block.timestamp <= m.settlementDeadline) revert DeadlineNotReached();
@@ -544,6 +580,15 @@ contract AvantdexExchange is AccessControl, Pausable, ReentrancyGuard {
     /// @dev Both sides use the same 0.5% rate; floor rounding keeps per-fill sums within the locked reserve.
     function _fee(uint256 value) private pure returns (uint256) {
         return (value * BUYER_FEE_BPS) / BPS;
+    }
+
+    /// @dev Reverts unless the token answers `decimals()` with exactly `expected`.
+    function _requireDecimals(address token, uint8 expected) private view {
+        try IERC20Metadata(token).decimals() returns (uint8 d) {
+            if (d != expected) revert DecimalsMismatch();
+        } catch {
+            revert DecimalsMismatch();
+        }
     }
 
     function _isRefundable(Market storage m) private view returns (bool) {

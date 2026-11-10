@@ -47,6 +47,7 @@ def decode_market(t) -> dict:
         "max_lots": t[9],
         "open_trades": t[10],
         "metadata_ref": "0x" + bytes(t[11]).hex(),
+        "token_decimals": t[12],
     }
 
 

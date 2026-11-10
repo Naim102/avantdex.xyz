@@ -124,7 +124,7 @@ def main() -> None:
     mk.raise_for_status()
     mk = mk.json()
     p = mk["onchain_params"]
-    send("createMarket", SELLER, ex.functions.createMarket(Web3.to_checksum_address(p["token"]) if int(p["token"], 16) else Web3.to_checksum_address("0x" + "00" * 20), int(p["lotSize"]), int(p["tickSize"]), int(p["minLots"]), int(p["maxLots"]), p["tradingStart"], p["tradingEnd"], bytes.fromhex(p["metadataRef"][2:])))
+    send("createMarket", SELLER, ex.functions.createMarket(Web3.to_checksum_address(p["token"]) if int(p["token"], 16) else Web3.to_checksum_address("0x" + "00" * 20), int(p["lotSize"]), int(p["tickSize"]), int(p["minLots"]), int(p["maxLots"]), p["tradingStart"], p["tradingEnd"], bytes.fromhex(p["metadataRef"][2:]), int(p["tokenDecimals"])))
     wait_indexer(client, lambda: client.get(f"/api/admin/markets/{mk['id']}", headers=sh).json()["onchain_id"] is not None, "indexer to bind the new market")
     market_id = client.get(f"/api/admin/markets/{mk['id']}", headers=sh).json()["onchain_id"]
     v = client.get(f"/api/admin/markets/{mk['id']}/verify-config", headers=sh).json()

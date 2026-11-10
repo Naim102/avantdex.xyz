@@ -18,7 +18,7 @@ interface AdminMarket extends Market {
   project_status: string | null
   project_id: number | null
   two_person_required: boolean
-  onchain_params: { token: string; lotSize: string; tickSize: string; minLots: string; maxLots: string; tradingStart: number; tradingEnd: number; metadataRef: string }
+  onchain_params: { token: string; lotSize: string; tickSize: string; minLots: string; maxLots: string; tradingStart: number; tradingEnd: number; metadataRef: string; tokenDecimals: number }
 }
 
 interface VerifyResult {
@@ -49,6 +49,7 @@ function MarketActions({ m, cfg }: { m: AdminMarket; cfg: AppConfig }) {
   const [deadline, setDeadline] = useState('')
   const hasRole = useRoleCheck(cfg)
   const [editing, setEditing] = useState(false)
+  const [nowMs] = useState(() => Date.now())
   const [confirmed, setConfirmed] = useState(false)
   const tokenCheck = useTokenCheck(token, m.token_decimals, m.id)
   const createdKey = `avantdex.created.${m.id}`
@@ -83,6 +84,7 @@ function MarketActions({ m, cfg }: { m: AdminMarket; cfg: AppConfig }) {
   }
   const p = m.onchain_params
   const status = m.status
+  const canCancelNow = status !== 'SettlementOpen' || !m.settlement_opened_at || nowMs <= new Date(m.settlement_opened_at).getTime() + 3600 * 1000
 
   return (
     <div className="space-y-3 rounded-2xl bg-[var(--tint)] p-3 text-sm">
@@ -111,7 +113,7 @@ function MarketActions({ m, cfg }: { m: AdminMarket; cfg: AppConfig }) {
             <button
               className="btn btn-primary !min-h-9"
               disabled={tx.busy}
-              onClick={() => void chain('Create market on-chain', 'createMarket', [p.token, BigInt(p.lotSize), BigInt(p.tickSize), BigInt(p.minLots), BigInt(p.maxLots), BigInt(p.tradingStart), BigInt(p.tradingEnd), p.metadataRef]).then((r) => {
+              onClick={() => void chain('Create market on-chain', 'createMarket', [p.token, BigInt(p.lotSize), BigInt(p.tickSize), BigInt(p.minLots), BigInt(p.maxLots), BigInt(p.tradingStart), BigInt(p.tradingEnd), p.metadataRef, p.tokenDecimals]).then((r) => {
                 if (r) { localStorage.setItem(createdKey, String(Date.now())); setCreatedAt(Date.now()) }
               })}
             >
@@ -184,9 +186,12 @@ function MarketActions({ m, cfg }: { m: AdminMarket; cfg: AppConfig }) {
             </Field>
             <button className="btn btn-ghost !min-h-9" disabled={tx.busy || !deadline} onClick={() => void chain('Extend settlement', 'extendSettlement', [BigInt(id!), BigInt(Math.floor(new Date(deadline).getTime() / 1000))])}>Extend</button>
             <button className="btn btn-primary !min-h-9" disabled={tx.busy || m.open_trades > 0} onClick={() => void chain('Complete market', 'completeMarket', [BigInt(id!)])}>Complete market</button>
-            <button className="btn btn-danger !min-h-9" disabled={tx.busy} onClick={() => window.confirm('Cancel this market? Remaining open trades become refundable with no fee.') && void chain('Cancel market', 'cancelMarket', [BigInt(id!)])}>Cancel market</button>
+            {canCancelNow ? (
+              <button className="btn btn-danger !min-h-9" disabled={tx.busy} onClick={() => window.confirm('Cancel this market? Remaining open trades become refundable with no fee.') && void chain('Cancel market', 'cancelMarket', [BigInt(id!)])}>Cancel market</button>
+            ) : null}
           </div>
-          {m.open_trades > 0 && <p className="text-xs text-[var(--subtle)]">Completing requires every trade to be settled, defaulted or refunded first.</p>}
+          {m.open_trades > 0 && <p className="text-xs text-[var(--subtle)]">Completing requires every trade to be settled, defaulted or refunded first. Anyone can trigger a default claim after the deadline, so these close on their own.</p>}
+          {!canCancelNow && <p className="text-xs text-[var(--subtle)]">Cancel is only possible during the first hour after settlement opened (to undo a mistake). After that the deadline rules decide, and defaults cannot be cancelled away.</p>}
         </div>
       )}
       {(status === 'Completed' || status === 'Cancelled') && <p className="text-[var(--subtle)]">This market is closed.</p>}

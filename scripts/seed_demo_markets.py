@@ -149,7 +149,7 @@ def main() -> None:
         mk.raise_for_status()
         mk = mk.json()
         p = mk["onchain_params"]
-        send("createMarket", ADMIN, ex.functions.createMarket(DEMO, int(p["lotSize"]), int(p["tickSize"]), int(p["minLots"]), int(p["maxLots"]), p["tradingStart"], p["tradingEnd"], bytes.fromhex(p["metadataRef"][2:])))
+        send("createMarket", ADMIN, ex.functions.createMarket(DEMO, int(p["lotSize"]), int(p["tickSize"]), int(p["minLots"]), int(p["maxLots"]), p["tradingStart"], p["tradingEnd"], bytes.fromhex(p["metadataRef"][2:]), int(p["tokenDecimals"])))
         wait(lambda: client.get(f"/api/admin/markets/{mk['id']}", headers=ah).json()["onchain_id"] is not None, "indexer to bind the market")
         mid_id = client.get(f"/api/admin/markets/{mk['id']}", headers=ah).json()["onchain_id"]
         assert client.get(f"/api/admin/markets/{mk['id']}/verify-config", headers=ah).json()["config_ok"]

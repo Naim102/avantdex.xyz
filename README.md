@@ -78,7 +78,11 @@ Backend tests (PostgreSQL + a local chain), see [docs/RUNBOOK.md](docs/RUNBOOK.m
 
 ## Deployed on Arc Testnet
 
-AvantdexExchange `0xB927b9C0BCE68e1426d89731a1E1D53d1D2BE9cb` ([explorer](https://explorer.testnet.arc.io/address/0xB927b9C0BCE68e1426d89731a1E1D53d1D2BE9cb)). The same lifecycle (project, market, trade, atomic settlement, fees to the collector, completion) was run on the previous deployment (`deployments/arc-testnet-previous.json`) with real Arc USDC; see `scripts/testnet_e2e.py`. The current deployment's runtime code matches the local build (only the USDC immutable differs).
+AvantdexExchange v2 `0xb48935EeA3B7264a53098B1DB920C3fCa09C0283` ([explorer](https://explorer.testnet.arc.io/address/0xb48935EeA3B7264a53098B1DB920C3fCa09C0283)), details in [docs/CONTRACT-V2.md](docs/CONTRACT-V2.md). Earlier deployments (`deployments/arc-testnet-previous.json`, `arc-testnet-v0.json`) are unused; the full lifecycle on real Arc USDC was run on the earlier one with `scripts/testnet_e2e.py`. All documentation is indexed in [docs/README.md](docs/README.md).
+
+## Deployed on Arc Testnet
+
+AvantdexExchange `0xb48935EeA3B7264a53098B1DB920C3fCa09C0283` ([explorer](https://explorer.testnet.arc.io/address/0xb48935EeA3B7264a53098B1DB920C3fCa09C0283)). The same lifecycle (project, market, trade, atomic settlement, fees to the collector, completion) was run on the previous deployment (`deployments/arc-testnet-previous.json`) with real Arc USDC; see `scripts/testnet_e2e.py`. The current deployment's runtime code matches the local build (only the USDC immutable differs).
 
 ## Deploy
 

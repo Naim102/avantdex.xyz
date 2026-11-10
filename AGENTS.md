@@ -21,8 +21,8 @@ Buyer 0.5% and seller 0.5% on **settled** trades only; 0% for order cancellation
 
 ## Deployed (Arc Testnet, chain 5042002)
 
-- AvantdexExchange: `0xB927b9C0BCE68e1426d89731a1E1D53d1D2BE9cb` (deploy block 71589790, tx in `deployments/arc-testnet.json`). Runtime bytecode (15,505 bytes) matches the local build (only the USDC immutable differs); fee constants 50/50 bps, collector `0x136a…Ebd6`. The previous deployment (`0x125c…e31d`, owner = the deployer) is kept in `deployments/arc-testnet-previous.json` and is no longer used.
-- Owner / `DEFAULT_ADMIN` / `MARKET_MANAGER` / `PAUSER`: the project admin wallet `0x378862A20B312298dc54585CbabC531D70F9baE9` (also `BOOTSTRAP_ADMIN_ADDRESSES`). The testnet deployer wallet `0xd6ac46673C844b4B46D5b66AC9223765bD6D65dC` (testnet-only key in the git-ignored `.env`) holds no role on this deployment; the admin wallet can grant roles from Admin -> Admins -> On-chain access. A database that indexed the previous contract must not be reused (the indexer refuses it): use a fresh database.
+- AvantdexExchange **v2**: `0xb48935EeA3B7264a53098B1DB920C3fCa09C0283` (deploy block 71711143, tx in `deployments/arc-testnet.json`). Runtime bytecode (16,175 bytes) matches the local build (only the USDC immutable differs); fee constants 50/50 bps, collector `0x136a…Ebd6`. v2 changes are in `docs/CONTRACT-V2.md` (decimals check, cancel closes after one hour of settlement, `claimDefault`/`settleTrade` open to any caller, one market per `metadataRef`). Earlier deployments: v1 `0xB927…E9cb` (`deployments/arc-testnet-previous.json`) and v0 `0x125c…e31d` (`deployments/arc-testnet-v0.json`), both unused. The indexer resets itself when `EXCHANGE_ADDRESS` changes on the same chain.
+- Owner / `DEFAULT_ADMIN` / `MARKET_MANAGER` / `PAUSER`: the project admin wallet `0x378862A20B312298dc54585CbabC531D70F9baE9` (also `BOOTSTRAP_ADMIN_ADDRESSES`). The testnet deployer wallet `0xd6ac46673C844b4B46D5b66AC9223765bD6D65dC` (testnet-only key in the git-ignored `.env`) holds no role on this deployment; the admin wallet can grant roles from Admin -> Admins -> On-chain access. The indexer wipes the old contract's indexed data by itself when the contract address changes (projects, admins and audit logs are kept).
 - Demo ERC-20 for settlement practice: `0x9B4aDa076774DE9575797cae424e0192a1cB6E34` (open mint, worthless).
 - Mainnet is NOT deployed. For mainnet the owner deploys with their own wallet and changes `CHAIN_ID`, `RPC_URL`, `EXPLORER_URL`, `USDC_ADDRESS`, `EXCHANGE_ADDRESS`, `EXCHANGE_DEPLOY_BLOCK` and the wagmi chain in `src/config.ts` (and must get an audit first).
 
@@ -49,6 +49,7 @@ Themes live in `src/index.css` (`data-theme` on `<html>`: sky, the default, and 
 - `contracts/AvantdexExchange.sol`; legacy v1 `contracts/AllocX*.sol` and `contracts/legacy/` (not used by Avantdex).
 - `backend/app/routers/` (public, auth, user, admin), `backend/app/indexer/worker.py`, `backend/app/models.py`, `backend/alembic/`.
 - `src/pages/` (Home, Explore, MarketDetail, Portfolio, Listing, admin/*), `src/components/TradePanel.tsx`, `src/lib/exchange.ts` (units and contract errors).
+- `docs/README.md` indexes all documentation (admin dashboard, Phase 1 operations, keeper, contract v2, indexer, design).
 - `docker-compose.yml` (production / Coolify), `docker-compose.dev.yml` (local), `scripts/deploy-testnet.sh`, `docs/RUNBOOK.md`.
 
 ## Commands

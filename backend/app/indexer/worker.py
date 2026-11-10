@@ -239,6 +239,7 @@ class Indexer:
             db.add(m)
         m.onchain_id = a["marketId"]
         m.token_address = a["token"].lower()
+        m.token_decimals = a["tokenDecimals"]
         m.status = "Setup"
         db.flush()
         touched["markets"].add(a["marketId"])
@@ -392,6 +393,7 @@ class Indexer:
         prev = m.status
         m.status = d["status"]
         m.token_address = d["token"]
+        m.token_decimals = d["token_decimals"]
         m.settlement_opened_at = d["settlement_opened_at"]
         m.settlement_deadline = d["settlement_deadline"]
         m.open_trades = d["open_trades"]

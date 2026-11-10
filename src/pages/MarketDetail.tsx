@@ -187,6 +187,7 @@ export default function MarketDetail() {
                 <li>After the token launch (TGE) a market manager opens settlement with the token address. The seller delivers the token atomically: token and USDC move in one transaction.</li>
                 <li>If the seller does not deliver before the settlement deadline, the buyer claims their payment plus the seller's collateral. The seller can still settle until the buyer claims.</li>
                 <li>If the market is cancelled or never settles, everyone is refunded in full with no fee.</li>
+                <li>After the deadline anyone can trigger the default claim (the money still goes to the buyer), and anyone can deliver for a seller who approved the token. A manager can only cancel a market during the first hour after settlement opens, to undo a mistake.</li>
                 <li>Admins cannot move escrowed funds.</li>
               </ul>
               <h3 className="display text-lg font-semibold">Fees (paid in USDC to {shortAddr(cfg.fee_collector)})</h3>

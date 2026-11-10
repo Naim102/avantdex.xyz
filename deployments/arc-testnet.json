@@ -1,12 +1,13 @@
 {
   "network": "Arc Testnet",
   "chainId": 5042002,
-  "exchange": "0xB927b9C0BCE68e1426d89731a1E1D53d1D2BE9cb",
-  "deployTx": "0xd6e009efd1803a985eb46ee65e4d6ce1091a687a19ccebe53e0f72b7baaf4288",
-  "deployBlock": 71589790,
+  "exchange": "0xb48935EeA3B7264a53098B1DB920C3fCa09C0283",
+  "deployTx": "0x3d493266836bc1ee6cf4e296d007a899cd3e8f15bc7614d0bf9624a663e4ce93",
+  "deployBlock": 71711143,
   "usdc": "0x3600000000000000000000000000000000000000",
   "feeCollector": "0x136a2C17E0E6C077F48F489BeC6DBCE3202CEbd6",
   "admin": "0x378862A20B312298dc54585CbabC531D70F9baE9",
   "demoToken": "0x9B4aDa076774DE9575797cae424e0192a1cB6E34",
-  "audited": false
+  "audited": false,
+  "version": "v2"
 }

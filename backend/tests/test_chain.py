@@ -137,7 +137,7 @@ def create_market_on_chain(client, chain, pid, sh):
     chain.send(
         chain.ex.functions.createMarket(
             Web3.to_checksum_address(p["token"]), int(p["lotSize"]), int(p["tickSize"]), int(p["minLots"]), int(p["maxLots"]),
-            p["tradingStart"], p["tradingEnd"], bytes.fromhex(p["metadataRef"][2:]),
+            p["tradingStart"], p["tradingEnd"], bytes.fromhex(p["metadataRef"][2:]), int(p["tokenDecimals"]),
         ),
         chain.deployer,
     )
@@ -308,7 +308,7 @@ def test_mismatched_config_blocks_activation(client, chain):
     # on-chain market created with a DIFFERENT tick size than the draft
     chain.send(
         chain.ex.functions.createMarket(
-            "0x0000000000000000000000000000000000000000", int(p["lotSize"]), int(p["tickSize"]) * 2, 1, 1000, p["tradingStart"], p["tradingEnd"], bytes.fromhex(p["metadataRef"][2:])
+            "0x0000000000000000000000000000000000000000", int(p["lotSize"]), int(p["tickSize"]) * 2, 1, 1000, p["tradingStart"], p["tradingEnd"], bytes.fromhex(p["metadataRef"][2:]), int(p["tokenDecimals"])
         ),
         chain.deployer,
     )
@@ -330,30 +330,30 @@ def test_indexer_is_idempotent_and_reports_lag(client, chain):
     assert h["indexer"]["lag_blocks"] == 0 and h["indexer"]["last_block"] >= chain.start_block
 
 
-def test_a_draft_sent_to_the_chain_twice_keeps_the_first_market(client, chain):
-    """Regression: clicking Create on-chain again created copies that took over the draft record (the draft pointed at the last copy)."""
+def test_a_draft_cannot_be_sent_to_the_chain_twice(client, chain):
+    """v2: the contract refuses a reused metadataRef, so a second click creates nothing (v1 created copies)."""
     pid, sh = approved_project(client, "Twice", "TWC")
     mk = create_market_on_chain(client, chain, pid, sh)
     p = mk["onchain_params"]
-    for _ in range(2):
-        chain.send(
-            chain.ex.functions.createMarket(
-                Web3.to_checksum_address(p["token"]), int(p["lotSize"]), int(p["tickSize"]), int(p["minLots"]), int(p["maxLots"]),
-                p["tradingStart"], p["tradingEnd"], bytes.fromhex(p["metadataRef"][2:]),
-            ),
-            chain.deployer,
-        )
+    again = chain.ex.functions.createMarket(
+        Web3.to_checksum_address(p["token"]), int(p["lotSize"]), int(p["tickSize"]), int(p["minLots"]), int(p["maxLots"]),
+        p["tradingStart"], p["tradingEnd"], bytes.fromhex(p["metadataRef"][2:]), int(p["tokenDecimals"]),
+    )
+    with pytest.raises(Exception, match="MetadataRefUsed|0x"):
+        again.transact({"from": chain.deployer})
     indexer()
+    assert chain.ex.functions.marketCount().call() == 1
     got = client.get(f"/api/admin/markets/{mk['id']}", headers=sh).json()
-    first_id = chain.ex.functions.marketCount().call() - 2
-    assert got["onchain_id"] == first_id and got["status"] == "Setup"
-    from sqlalchemy import func, select
+    assert got["onchain_id"] == 1 and got["status"] == "Setup"
+    assert got["onchain_params"]["tokenDecimals"] == 18
 
-    from app.db import SessionLocal
-    from app.models import Market
 
-    with SessionLocal() as db:
-        assert db.scalar(select(func.count(Market.id))) == 1  # no orphan rows for the copies
+def test_verify_config_compares_the_stored_decimals(client, chain):
+    pid, sh = approved_project(client, "Dec", "DEC")
+    mk = create_market_on_chain(client, chain, pid, sh)
+    indexer()
+    v = client.get(f"/api/admin/markets/{mk['id']}/verify-config", headers=sh).json()
+    assert v["config_ok"] and "token_decimals" in [c["field"] for c in v["checks"]]
 
 
 def test_new_contract_resets_chain_data_but_keeps_projects(client, chain, monkeypatch):
