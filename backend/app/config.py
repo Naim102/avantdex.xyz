@@ -45,6 +45,10 @@ class Settings(BaseSettings):
     # Indexer
     indexer_batch_blocks: int = 2000
     indexer_poll_seconds: float = 2.0
+    # Optional https URL that receives a JSON summary when something needs attention (Slack, Discord, a relay)
+    admin_webhook_url: str = ""
+    # Seconds between deadline reminders and attention checks
+    ops_interval_seconds: float = 60.0
 
     @field_validator("database_url")
     @classmethod

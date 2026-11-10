@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { parseUnits } from 'viem'
 import { BadgeRow, DataTable, EmptyState, Field, Modal, Notice, Spinner, StatusChip } from '@/components/ui'
 import { api } from '@/lib/api'
 import { useConfig } from '@/hooks/useApp'
+import { MarketForm } from '@/pages/admin/MarketForm'
 import { useAuth } from '@/hooks/useApp'
 import { fmtDate, shortAddr } from '@/lib/format'
 import { BADGE_INFO } from '@/lib/format'
@@ -320,82 +320,6 @@ export function Verification() {
 
 // ---------------------------------------------------------------- Approved projects + market draft
 
-function DraftForm({ p, onClose }: { p: AdminProject; onClose: () => void }) {
-  const qc = useQueryClient()
-  const [f, setF] = useState(() => {
-    const now = new Date()
-    const toLocal = (d: Date) => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16)
-    return {
-      decimals: '18',
-      lotTokens: '1',
-      tick: '0.01',
-      minLots: '1',
-      maxLots: '1000',
-      start: toLocal(now),
-      end: toLocal(new Date(now.getTime() + 30 * 86400000)),
-    }
-  })
-  const [state, setState] = useState<{ busy: boolean; error?: string; ok?: boolean }>({ busy: false })
-  const submit = async () => {
-    setState({ busy: true })
-    try {
-      const dec = Number(f.decimals)
-      const lotSize = parseUnits(f.lotTokens, dec)
-      const tickPerToken = parseUnits(f.tick, 6)
-      const tickLot = (tickPerToken * lotSize) / 10n ** BigInt(dec)
-      if (tickLot === 0n || (tickPerToken * lotSize) % 10n ** BigInt(dec) !== 0n) throw new Error('Tick size does not convert to a whole number of USDC base units for this lot size')
-      await api.post('/admin/markets', {
-        project_id: p.id,
-        token_decimals: dec,
-        lot_size: lotSize.toString(),
-        tick_size: tickLot.toString(),
-        min_lots: Number(f.minLots),
-        max_lots: Number(f.maxLots),
-        trading_start: new Date(f.start).toISOString(),
-        trading_end: new Date(f.end).toISOString(),
-      })
-      void qc.invalidateQueries({ queryKey: ['admin-projects'] })
-      void qc.invalidateQueries({ queryKey: ['admin-markets'] })
-      setState({ busy: false, ok: true })
-    } catch (e) {
-      setState({ busy: false, error: e instanceof Error ? e.message : 'Failed' })
-    }
-  }
-  const row = (k: keyof typeof f, label: string, type = 'text', hint?: string) => (
-    <Field label={label} htmlFor={`d-${k}`} hint={hint}>
-      <input id={`d-${k}`} type={type} className="field" value={f[k]} onChange={(e) => setF({ ...f, [k]: e.target.value })} />
-    </Field>
-  )
-  return (
-    <Modal open onClose={onClose} title={`Configure market: ${p.name}`}>
-      {state.ok ? (
-        <div className="space-y-3">
-          <Notice tone="ok">Market draft created. Next: Market Management → create it on-chain, verify configuration, approve and activate.</Notice>
-          <button className="btn btn-primary" onClick={onClose}>Done</button>
-        </div>
-      ) : (
-        <div className="max-h-[70vh] space-y-3 overflow-y-auto pr-1">
-          <Notice>Parameters cannot be changed after the market is created on-chain. To change them, cancel and create a new market.</Notice>
-          <div className="grid gap-3 sm:grid-cols-2">
-            {row('decimals', 'Token decimals', 'number')}
-            {row('lotTokens', 'Lot size (tokens)', 'text', 'Smallest tradable quantity')}
-            {row('tick', 'Tick size (USDC per token)', 'text', 'Price step')}
-            <div />
-            {row('minLots', 'Min order (lots)', 'number')}
-            {row('maxLots', 'Max order (lots)', 'number')}
-            {row('start', 'Trading start', 'datetime-local')}
-            {row('end', 'Trading end', 'datetime-local')}
-          </div>
-          {state.error && <Notice tone="error">{state.error}</Notice>}
-          <button className="btn btn-primary" disabled={state.busy} onClick={() => void submit()}>
-            {state.busy ? <Spinner /> : 'Create market draft'}
-          </button>
-        </div>
-      )}
-    </Modal>
-  )
-}
-
 export function ApprovedProjects() {
   const { data } = useProjects('Approved')
   const { data: setup } = useProjects('Market Setup')
@@ -419,7 +343,7 @@ export function ApprovedProjects() {
         </div>
       )}
       {(setup?.items.length ?? 0) > 0 && <p className="text-sm text-[var(--subtle)]">{setup?.items.length} project(s) already in Market Setup. Continue in Market Management.</p>}
-      {draft && <DraftForm p={draft} onClose={() => setDraft(null)} />}
+      {draft && <MarketForm title={`Configure market: ${draft.name}`} projectId={draft.id} tokenAddress={draft.token_address} tgeDate={draft.tge_date} onClose={() => setDraft(null)} />}
     </>
   )
 }

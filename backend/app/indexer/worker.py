@@ -20,6 +20,7 @@ from web3._utils.events import get_event_data
 from ..chain import ABI, decode_market, decode_order, decode_trade, get_exchange, get_web3, to_dt
 from ..config import get_settings
 from ..db import SessionLocal
+from ..ops import run_ops
 from ..models import (
     ChainEvent,
     Claimable,
@@ -170,9 +171,14 @@ class Indexer:
 
     def run_forever(self) -> None:
         log.info("indexer started for %s on chain %s", self.contract.address, self.settings.chain_id)
+        last_ops = 0.0
         while True:
             try:
                 self.catch_up()
+                if time.monotonic() - last_ops >= self.settings.ops_interval_seconds:
+                    last_ops = time.monotonic()
+                    with SessionLocal() as db:
+                        run_ops(db)
             except Exception as exc:  # keep the worker alive; the next loop retries from last_block
                 log.error("indexer iteration failed (%s); retrying in 10s", type(exc).__name__)
                 time.sleep(10)

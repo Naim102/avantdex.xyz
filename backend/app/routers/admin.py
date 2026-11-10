@@ -34,6 +34,7 @@ from ..models import (
     utcnow,
 )
 from ..security import ApiError, Session_, audit, normalize_address, require_any_admin, role_label
+from ..ops import attention_items, check_token
 from ..utils import BADGES, clean_text, iso, make_slug, project_private
 from .public import market_json, bulk_stats
 from .user import ProjectIn, _apply, dispute_json
@@ -434,6 +435,87 @@ def set_delisted(mid: int, body: DelistIn, user: Session_ = Depends(require_any_
     audit(db, user, "market.delist" if body.delisted else "market.relist", "market", m.id, before, {"delisted": m.delisted})
     db.commit()
     return admin_market_json(m, db)
+
+
+@router.get("/token-check")
+def token_check(
+    address: str = Query("", max_length=60),
+    decimals: int | None = Query(None, ge=0, le=36),
+    market_id: int | None = Query(None),
+    user: Session_ = Depends(require_any_admin),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Reads a token from the chain and compares it with the market form and the project record (no transaction)."""
+    token, symbol = "", ""
+    if market_id is not None:
+        m = db.get(Market, market_id)
+        if m is not None:
+            if decimals is None:
+                decimals = m.token_decimals
+            if m.project:
+                token, symbol = m.project.token_address, m.project.token_symbol
+            if not token:
+                token = m.token_address if m.token_address != "0x" + "0" * 40 else ""
+    return check_token(address.strip(), decimals, token, symbol)
+
+
+@router.get("/attention")
+def attention(user: Session_ = Depends(require_any_admin), db: Session = Depends(get_db)) -> dict:
+    return {"items": attention_items(db)}
+
+
+class DraftEditIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    lot_size: int = Field(gt=0)
+    tick_size: int = Field(gt=0)
+    min_lots: int = Field(gt=0)
+    max_lots: int = Field(gt=0)
+    trading_start: dt.datetime
+    trading_end: dt.datetime
+    tge_date: dt.datetime | None = None
+    token_decimals: int = Field(default=18, ge=0, le=36)
+
+
+@router.put("/markets/{mid}")
+def edit_draft(mid: int, body: DraftEditIn, user: Session_ = Depends(require_any_admin), db: Session = Depends(get_db)) -> dict:
+    """Edit a market draft. Only possible before the market exists on-chain (the contract parameters are immutable)."""
+    m = db.get(Market, mid)
+    if m is None:
+        raise ApiError(404, "market_not_found", "Market not found")
+    if m.onchain_id is not None or m.status != "draft":
+        raise ApiError(409, "not_a_draft", "This market is already on-chain, its parameters cannot change")
+    start, end = _utc(body.trading_start), _utc(body.trading_end)
+    if body.max_lots < body.min_lots:
+        raise ApiError(422, "validation_error", "max_lots must be >= min_lots")
+    if end < start + dt.timedelta(hours=1) or end <= utcnow():
+        raise ApiError(422, "validation_error", "Trading end must be at least 1 hour after start and in the future")
+    before = {"lot_size": str(m.lot_size), "tick_size": str(m.tick_size), "trading_end": iso(m.trading_end)}
+    m.lot_size, m.tick_size, m.min_lots, m.max_lots = body.lot_size, body.tick_size, body.min_lots, body.max_lots
+    m.trading_start, m.trading_end, m.token_decimals = start, end, body.token_decimals
+    m.tge_date = _utc(body.tge_date) if body.tge_date else None
+    audit(db, user, "market.draft_edit", "market", m.id, before, {"lot_size": str(m.lot_size), "tick_size": str(m.tick_size), "trading_end": iso(m.trading_end)})
+    db.commit()
+    db.refresh(m)
+    return admin_market_json(m, db)
+
+
+@router.delete("/markets/{mid}")
+def discard_draft(mid: int, user: Session_ = Depends(require_any_admin), db: Session = Depends(get_db)) -> dict:
+    """Discard a market draft that was never created on-chain. The project goes back to Approved."""
+    m = db.get(Market, mid)
+    if m is None:
+        raise ApiError(404, "market_not_found", "Market not found")
+    if m.onchain_id is not None or m.status != "draft":
+        raise ApiError(409, "not_a_draft", "Only a draft that was never created on-chain can be discarded")
+    p = m.project
+    audit(db, user, "market.draft_discard", "market", m.id, {"slug": m.slug}, None)
+    db.delete(m)
+    db.flush()
+    if p is not None and p.status == "Market Setup" and not db.scalar(select(Market.id).where(Market.project_id == p.id)):
+        db.add(ProjectStatusHistory(project_id=p.id, from_status=p.status, to_status="Approved", actor=user.address, reason="draft discarded"))
+        p.status = "Approved"
+    db.commit()
+    return {"ok": True}
 
 
 @router.get("/settlement")

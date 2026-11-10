@@ -5,8 +5,8 @@ Run on 2026-11-10 against the local dev stack (anvil with Arc Testnet's chain id
 | Suite | Result |
 |---|---|
 | Contracts (`forge test`, unit, fuzz and invariants) | 104 passed |
-| Backend (`pytest`, includes chain integration) | 58 passed |
-| UI feature test (`scripts/ui-feature-test.mjs`, headless Chrome), final run on a fresh stack | 23 of 23 passed |
+| Backend (`pytest`, includes chain integration) | 70 passed |
+| UI feature test (`scripts/ui-feature-test.mjs`, headless Chrome), final run on a fresh stack, includes the attention list, token pre-flight, draft edit/discard and pause | 24 of 24 passed |
 | New contract on Arc Testnet (`0xB927…E9cb`): roles, fee constants, runtime code vs local build, and the production compose stack indexing it with lag 0 | verified |
 | Typecheck (`tsc`) and lint (`oxlint --type-aware`) | clean |
 

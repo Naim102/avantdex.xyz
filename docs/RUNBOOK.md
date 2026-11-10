@@ -111,6 +111,15 @@ docker run --rm -v "$PWD:/app" -v "$PWD/../contracts/out:/out:ro" -w /app \
   avantdex-backend-dev python -m pytest tests -q
 ```
 
+## Operations: attention list, reminders, webhook
+
+* **Admin -> Overview -> Needs attention** lists what a person should do now: a TGE date has passed and settlement is not open (act now), trading ended without settlement, a settlement deadline is within 24 hours, a deadline passed with trades still open, a market ready to complete, a market created on-chain but not activated, a stalled indexer, applications waiting.
+* **Before settlement opens** the dashboard reads the token from the chain (code, name, symbol, decimals, total supply), compares decimals with the market form and the address with the project record, blocks the button if the address is not a token or the decimals differ, and asks you to confirm that you checked the address against the project's official channels.
+* **Market drafts** can be edited (including the TGE date and a UTC preview of every time) or discarded until the market is created on-chain.
+* **Reminders:** every `OPS_INTERVAL_SECONDS` (default 60) the indexer writes notifications to sellers at 24 h and 1 h before a settlement deadline and to both sides once it has passed. They appear in the bell and on the Portfolio notifications tab.
+* **Webhook:** set `ADMIN_WEBHOOK_URL` (https) to receive a JSON message `{"text": ...}` once per new high or warn item.
+* **Pause** (Admin -> Settings) stops new orders on every market. It needs the `PAUSER` role. Cancel, settle, default claims and refunds keep working.
+
 ## Operations notes
 
 * **Pause** blocks only new orders. Cancel, settle, default claims and refunds always work.

@@ -382,3 +382,15 @@ def test_new_contract_resets_chain_data_but_keeps_projects(client, chain, monkey
         assert db.get(Project, pid).status == "Approved"
         assert db.get(Project, pid).name == "Moves"
         assert db.scalar(select(func.count(ChainEvent.id))) <= 4  # only the new contract's setup events
+
+
+def test_token_check_reads_the_token_and_flags_wrong_decimals(client, chain):
+    pid, sh = approved_project(client, "Probe", "PRB")
+    tok = chain.token.address
+    ok = client.get("/api/admin/token-check", headers=sh, params={"address": tok, "decimals": 18}).json()
+    assert ok["is_contract"] and ok["decimals"] == 18 and ok["ok"] is True
+    bad = client.get("/api/admin/token-check", headers=sh, params={"address": tok, "decimals": 6}).json()
+    assert bad["ok"] is False and any(c["label"] == "Decimals" and c["blocking"] for c in bad["checks"])
+    eoa = client.get("/api/admin/token-check", headers=sh, params={"address": chain.other}).json()
+    assert eoa["is_contract"] is False and eoa["ok"] is False
+    assert client.get("/api/admin/token-check", headers=sh, params={"address": "nope"}).json()["ok"] is False

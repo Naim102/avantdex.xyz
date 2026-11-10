@@ -8,6 +8,7 @@ import { api, type AppConfig, type Market } from '@/lib/api'
 import { CHAIN_ID, useConfig } from '@/hooks/useApp'
 import { useTx } from '@/hooks/useTx'
 import { exchangeAbi } from '@/lib/exchangeAbi'
+import { MarketForm, TokenCheckPanel, useTokenCheck } from '@/pages/admin/MarketForm'
 import { addrUrl, fmtDate, shortAddr } from '@/lib/format'
 
 interface AdminMarket extends Market {
@@ -47,6 +48,9 @@ function MarketActions({ m, cfg }: { m: AdminMarket; cfg: AppConfig }) {
   const [hours, setHours] = useState('24')
   const [deadline, setDeadline] = useState('')
   const hasRole = useRoleCheck(cfg)
+  const [editing, setEditing] = useState(false)
+  const [confirmed, setConfirmed] = useState(false)
+  const tokenCheck = useTokenCheck(token, m.token_decimals, m.id)
   const createdKey = `avantdex.created.${m.id}`
   const [createdAt, setCreatedAt] = useState(() => {
     const t = Number(localStorage.getItem(createdKey) ?? 0)
@@ -86,6 +90,17 @@ function MarketActions({ m, cfg }: { m: AdminMarket; cfg: AppConfig }) {
       {status === 'draft' && (
         <div className="space-y-2">
           <p className="text-[var(--subtle)]">Step 1: create the market on-chain with the exact draft parameters. {m.created_by && `Draft by ${shortAddr(m.created_by)}.`}</p>
+          <div className="flex flex-wrap gap-2">
+            <button className="btn btn-ghost !min-h-9" onClick={() => setEditing(true)}>Edit draft</button>
+            <button
+              className="btn btn-danger !min-h-9"
+              disabled={waiting}
+              onClick={() => window.confirm('Discard this draft? The project goes back to Approved.') && void call(() => api.del(`/admin/markets/${m.id}`))}
+            >
+              Discard draft
+            </button>
+          </div>
+          {editing && <MarketForm title={`Edit draft: ${m.project?.name ?? m.slug ?? ''}`} market={m} onClose={() => setEditing(false)} />}
           {waiting ? (
             <Notice tone="warn">
               A create transaction for this draft was already confirmed. Wait for the site to pick it up (usually seconds, this list refreshes by itself). Sending it again would create a second, unused market on the contract.
@@ -141,13 +156,20 @@ function MarketActions({ m, cfg }: { m: AdminMarket; cfg: AppConfig }) {
             <Notice tone="warn">Verify the token address off-chain first (project-confirmed address, explorer, contract badge). Opening settlement stops trading and starts the delivery deadline. Use two-person review for this step.</Notice>
             <div className="grid gap-2 sm:grid-cols-2">
               <Field label="Token contract address" htmlFor={`tk${m.id}`}>
-                <input id={`tk${m.id}`} className="field mono text-xs" value={token} onChange={(e) => setToken(e.target.value.trim())} placeholder="0x…" />
+                <input id={`tk${m.id}`} className="field mono text-xs" value={token} onChange={(e) => { setToken(e.target.value.trim()); setConfirmed(false) }} placeholder="0x…" />
               </Field>
               <Field label="Settlement window (hours, 1–336)" htmlFor={`h${m.id}`}>
                 <input id={`h${m.id}`} className="field" inputMode="numeric" value={hours} onChange={(e) => setHours(e.target.value.replace(/\D/g, ''))} />
               </Field>
             </div>
-            <button className="btn btn-primary !min-h-9" disabled={tx.busy || !/^0x[0-9a-fA-F]{40}$/.test(token) || !(Number(hours) >= 1 && Number(hours) <= 336)} onClick={() => void chain('Open settlement', 'openSettlement', [BigInt(id!), token, BigInt(Number(hours) * 3600)])}>
+            {/^0x[0-9a-fA-F]{40}$/.test(token) && <TokenCheckPanel result={tokenCheck.data} loading={tokenCheck.isLoading} error={tokenCheck.isError} />}
+            {tokenCheck.data && tokenCheck.data.ok && (
+              <label className="flex items-start gap-2 text-sm font-medium">
+                <input type="checkbox" className="mt-1" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} />
+                <span>I checked {tokenCheck.data.symbol ?? 'this token'} at this address against the project's official channels. Sellers will deliver this exact token.</span>
+              </label>
+            )}
+            <button className="btn btn-primary !min-h-9" disabled={tx.busy || !tokenCheck.data?.ok || !confirmed || !(Number(hours) >= 1 && Number(hours) <= 336)} onClick={() => void chain('Open settlement', 'openSettlement', [BigInt(id!), token, BigInt(Number(hours) * 3600)])}>
               {tx.busy ? <Spinner /> : 'Open settlement'}
             </button>
           </div>

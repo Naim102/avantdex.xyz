@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAccount, useReadContract } from 'wagmi'
 import { DataTable, EmptyState, Field, Notice, Spinner, StatusChip, TxPanel } from '@/components/ui'
@@ -21,6 +22,43 @@ interface OverviewData {
   indexer_lag_blocks: number | null
 }
 
+interface AttentionItem { severity: 'high' | 'warn' | 'info'; key: string; title: string; detail: string; link: string }
+
+/** What a person should look at now: passed TGE dates, closing deadlines, markets ready to complete, a stalled indexer. */
+function Attention() {
+  const { data, isLoading } = useQuery({ queryKey: ['admin-attention'], queryFn: () => api.get<{ items: AttentionItem[] }>('/admin/attention'), refetchInterval: 30000 })
+  const items = data?.items ?? []
+  const tone = { high: 'text-[var(--danger)]', warn: 'text-[var(--warn)]', info: 'text-[var(--muted)]' } as const
+  const label = { high: 'Act now', warn: 'Soon', info: 'Info' } as const
+  return (
+    <section className="glass p-4 sm:p-5" aria-labelledby="att-h">
+      <div className="flex items-baseline justify-between gap-3">
+        <h3 id="att-h" className="display text-lg">Needs attention</h3>
+        <span className="text-xs text-[var(--muted)]">{items.length} item{items.length === 1 ? '' : 's'}</span>
+      </div>
+      {isLoading ? (
+        <Spinner label="Checking" />
+      ) : items.length === 0 ? (
+        <p className="py-3 text-sm font-medium text-[var(--muted)]">Nothing needs attention. TGE dates, settlement deadlines and the indexer are all fine.</p>
+      ) : (
+        <ul className="mt-2 divide-y divide-[var(--hair)]">
+          {items.map((i) => (
+            <li key={i.key}>
+              <Link to={i.link} className="grid grid-cols-[auto_1fr] gap-x-3 py-3 hover:bg-[var(--tint)]">
+                <span className={`pt-0.5 text-xs font-bold ${tone[i.severity]}`}>{label[i.severity]}</span>
+                <span>
+                  <span className="block text-sm font-semibold">{i.title}</span>
+                  <span className="block text-xs text-[var(--muted)]">{i.detail}</span>
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  )
+}
+
 export function Overview() {
   const { data, isLoading } = useQuery({ queryKey: ['admin-overview'], queryFn: () => api.get<OverviewData>('/admin/overview'), refetchInterval: 10000 })
   if (isLoading || !data) return <Spinner label="Loading…" />
@@ -36,6 +74,7 @@ export function Overview() {
   return (
     <>
       <h2 className="display text-2xl font-semibold">Overview</h2>
+      <Attention />
       <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
         {stat('Open trades', String(data.open_trades))}
         {stat('Settled trades', String(data.settled_trades))}
@@ -261,6 +300,37 @@ function FeeCollectorForm({ current }: { current: string }) {
   )
 }
 
+/** Pause stops NEW orders only. Cancel, settle, default claims and refunds keep working. Needs the PAUSER role on the contract. */
+function PauseControl() {
+  const { data: cfg } = useConfig()
+  const { address } = useAccount()
+  const tx = useTx()
+  const base = { address: cfg?.exchange_address, abi: exchangeAbi, chainId: CHAIN_ID } as const
+  const paused = useReadContract({ ...base, functionName: 'paused', query: { enabled: !!cfg, refetchInterval: 10000 } })
+  const role = useReadContract({ ...base, functionName: 'PAUSER_ROLE', query: { enabled: !!cfg } })
+  const can = useReadContract({ ...base, functionName: 'hasRole', args: role.data && address ? [role.data, address] : undefined, query: { enabled: !!role.data && !!address } })
+  const isPaused = paused.data === true
+  const toggle = async () => {
+    if (!cfg) return
+    if (!window.confirm(isPaused ? 'Allow new orders again?' : 'Pause new orders on every market? Cancelling, settling, claiming and refunds keep working.')) return
+    await tx.run(isPaused ? 'Unpause' : 'Pause', { address: cfg.exchange_address, abi: exchangeAbi, functionName: isPaused ? 'unpause' : 'pause' })
+    void paused.refetch()
+  }
+  return (
+    <div className="glass space-y-3 p-4">
+      <h3 className="display text-lg">New orders</h3>
+      <p className="text-sm text-[var(--muted)]">
+        Status: <b className={isPaused ? 'text-[var(--danger)]' : 'text-[var(--success)]'}>{paused.data === undefined ? 'unknown' : isPaused ? 'paused' : 'open'}</b>. Pausing stops new orders on every market. Users can still cancel, settle, claim a default and get refunds.
+      </p>
+      {can.data === false && <Notice tone="warn">The connected wallet does not hold the PAUSER role on the contract.</Notice>}
+      <button className={`btn ${isPaused ? 'btn-primary' : 'btn-danger'}`} disabled={tx.busy || can.data !== true} onClick={() => void toggle()}>
+        {tx.busy ? <Spinner /> : isPaused ? 'Unpause new orders' : 'Pause new orders'}
+      </button>
+      <TxPanel tx={tx} />
+    </div>
+  )
+}
+
 export function SettingsPage() {
   const qc = useQueryClient()
   const { data } = useQuery({ queryKey: ['admin-settings'], queryFn: () => api.get<SettingsData>('/admin/settings') })
@@ -291,6 +361,7 @@ export function SettingsPage() {
         <p className="pt-3 text-xs text-[var(--subtle)]">{data.note}</p>
       </div>
       <FeeCollectorForm current={data.fee_collector} />
+      <PauseControl />
       <div className="glass space-y-3 rounded-3xl p-4">
         <Field label="Platform notice (shown as a banner)" htmlFor="nt" hint="Plain text, up to 500 characters.">
           <input id="nt" className="field" maxLength={500} value={notice ?? data.notice} onChange={(e) => setNotice(e.target.value)} />
