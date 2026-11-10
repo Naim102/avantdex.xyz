@@ -8,6 +8,7 @@ off-chain decisions.
 from __future__ import annotations
 
 import datetime as dt
+import json
 
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, ConfigDict, Field
@@ -457,6 +458,18 @@ def token_check(
             if not token:
                 token = m.token_address if m.token_address != "0x" + "0" * 40 else ""
     return check_token(address.strip(), decimals, token, symbol)
+
+
+@router.get("/keeper")
+def keeper_status(user: Session_ = Depends(require_any_admin), db: Session = Depends(get_db)) -> dict:
+    """Status written by the keeper worker (empty until it has run once). Never contains the key."""
+    row = db.get(Setting, "keeper_status")
+    status = json.loads(row.value) if row and row.value else None
+    recent = [
+        {"action": a.action, "entity": f"{a.entity_type} {a.entity_id}", "tx": (a.after or {}).get("tx"), "ok": (a.after or {}).get("ok"), "at": iso(a.created_at)}
+        for a in db.scalars(select(AuditLog).where(AuditLog.role == "keeper").order_by(AuditLog.id.desc()).limit(10))
+    ]
+    return {"status": status, "recent": recent}
 
 
 @router.get("/attention")

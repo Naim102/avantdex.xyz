@@ -394,3 +394,107 @@ def test_token_check_reads_the_token_and_flags_wrong_decimals(client, chain):
     eoa = client.get("/api/admin/token-check", headers=sh, params={"address": chain.other}).json()
     assert eoa["is_contract"] is False and eoa["ok"] is False
     assert client.get("/api/admin/token-check", headers=sh, params={"address": "nope"}).json()["ok"] is False
+
+
+# --------------------------------------------------------------------------- keeper
+
+KEEPER_KEY = "0x47e179ec197488593b187f80a00eb0da91f1b9d0b13f8733639f19c30a34926a"  # public anvil dev account 4 (no value)
+
+
+def keeper(monkeypatch, **env):
+    from app.config import get_settings
+
+    monkeypatch.setenv("KEEPER_ENABLED", "true")
+    monkeypatch.setenv("KEEPER_PRIVATE_KEY", KEEPER_KEY)
+    for k, v in env.items():
+        monkeypatch.setenv(k, v)
+    get_settings.cache_clear()
+    from app.keeper import Keeper
+
+    return Keeper()
+
+
+def live_market(client, chain):
+    pid, sh = approved_project(client, "Chores", "CHR")
+    mk = create_market_on_chain(client, chain, pid, sh)
+    indexer()
+    chain.send(chain.ex.functions.activateMarket(1), chain.deployer)
+    indexer()
+    return mk
+
+
+def test_keeper_expires_orders_and_refunds_a_cancelled_market(client, chain, monkeypatch):
+    from sqlalchemy import select
+
+    from app.db import SessionLocal
+    from app.models import AuditLog, Order, Trade
+
+    live_market(client, chain)
+    short = chain.now() + 3600
+    chain.send(chain.ex.functions.placeOrder(1, 1, 2 * ONE, 10, short, False, 0, []), chain.seller)
+    buyer_before = chain.usdc.functions.balanceOf(chain.buyer).call()
+    chain.send(chain.ex.functions.placeOrder(1, 0, 2 * ONE, 3, short, True, 3, [1]), chain.buyer)  # a trade of 3 lots
+    chain.send(chain.ex.functions.placeOrder(1, 0, ONE, 2, short, False, 0, []), chain.other)  # resting bid, expires too
+    k = keeper(monkeypatch)
+    indexer()
+    assert k.run_once() == {}  # nothing is due yet
+    chain.warp(2 * 3600)
+    indexer()
+    res = k.run_once()
+    assert res.get("expire_orders") == 1
+    indexer()
+    with SessionLocal() as db:
+        assert {o.status for o in db.scalars(select(Order))} == {"Filled", "Expired"}  # the filled taker stays Filled
+        assert [t.status for t in db.scalars(select(Trade))] == ["Open"]  # a live market's trades are never touched
+    # the manager cancels the market: every open trade becomes refundable and the keeper does it for everyone
+    chain.send(chain.ex.functions.cancelMarket(1), chain.deployer)
+    indexer()
+    res = k.run_once()
+    assert res.get("refund_trade") == 1
+    indexer()
+    with SessionLocal() as db:
+        assert [t.status for t in db.scalars(select(Trade))] == ["Refunded"]
+        logs = list(db.scalars(select(AuditLog).where(AuditLog.role == "keeper")))
+        assert {a.action for a in logs} == {"keeper.expire_orders", "keeper.refund_trade"} and all(a.after["ok"] for a in logs)
+    assert chain.usdc.functions.balanceOf(chain.buyer).call() == buyer_before  # payment and fee reserve came back in full
+
+
+def test_keeper_dry_run_sends_nothing(client, chain, monkeypatch):
+    live_market(client, chain)
+    short = chain.now() + 3600
+    chain.send(chain.ex.functions.placeOrder(1, 1, 2 * ONE, 10, short, False, 0, []), chain.seller)
+    chain.warp(2 * 3600)
+    indexer()
+    k = keeper(monkeypatch, KEEPER_DRY_RUN="true")
+    before = chain.w3.eth.get_transaction_count(k.address)
+    assert k.run_once() == {"would_send": 1}
+    assert chain.w3.eth.get_transaction_count(k.address) == before
+
+
+def test_keeper_completes_markets_only_when_enabled_and_allowed(client, chain, monkeypatch):
+    from sqlalchemy import select
+
+    from app.db import SessionLocal
+    from app.models import Market
+
+    live_market(client, chain)
+    chain.send(chain.ex.functions.openSettlement(1, chain.token.address, 3600), chain.deployer)
+    indexer()
+    off = keeper(monkeypatch)
+    assert off.run_once() == {}  # complete_markets is off by default
+    on = keeper(monkeypatch, KEEPER_COMPLETE_MARKETS="true")
+    assert "does not hold MARKET_MANAGER" in on.run_once()["note"]  # no role, nothing sent
+    chain.send(chain.ex.functions.grantRole(chain.ex.functions.MARKET_MANAGER_ROLE().call(), on.address), chain.deployer)
+    assert on.run_once() == {"complete_market": 1}
+    indexer()
+    with SessionLocal() as db:
+        assert db.scalar(select(Market.status)) == "Completed"
+
+
+def test_keeper_status_and_low_balance_warning(client, chain, monkeypatch, admin_headers):
+    k = keeper(monkeypatch, KEEPER_MIN_BALANCE="1000000000")  # more than any wallet holds
+    k.run_once()
+    st = client.get("/api/admin/keeper", headers=admin_headers).json()["status"]
+    assert st["enabled"] and "Low balance" in st["error"] and st["address"] == k.address and "private" not in str(st).lower()
+    items = client.get("/api/admin/attention", headers=admin_headers).json()["items"]
+    assert any(i["key"] == "keeper" for i in items)

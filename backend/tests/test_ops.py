@@ -40,7 +40,7 @@ def test_attention_flags_tge_deadline_and_ready_to_complete(client):
         ids["late"] = _open_settlement(db, 4, "Late", "LAT", dt.timedelta(hours=-3)).id
         ids["done"] = _open_settlement(db, 5, "Done", "DON", dt.timedelta(hours=-3), open_trades=0).id
         ids["fine"] = seed_market(db, 6, "Fine", "FIN", tge_days=10, end_days=20).id
-        db.add(IndexerState(id=1, chain_id=5042002, contract="0x" + "1" * 40, last_block=10, chain_head=10, updated_at=NOW))
+        db.add(IndexerState(id=1, chain_id=5042002, contract="0x" + "1" * 40, last_block=10, chain_head=10, updated_at=dt.datetime.now(dt.timezone.utc)))  # fresh: the module-level NOW goes stale in a long run
         db.commit()
         got = keys(db)
     assert got[f"tge:{ids['tge']}"] == "high"

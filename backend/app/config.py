@@ -50,6 +50,16 @@ class Settings(BaseSettings):
     # Seconds between deadline reminders and attention checks
     ops_interval_seconds: float = 60.0
 
+    # Keeper (docs/SETTLEMENT-AUDIT-AND-PLAN.md, phase 2): performs trust-free chores. Off unless enabled.
+    keeper_enabled: bool = False
+    keeper_private_key: str = ""  # a small hot wallet that only needs gas; it holds no role unless KEEPER_COMPLETE_MARKETS
+    keeper_dry_run: bool = False  # log what would be sent without sending
+    keeper_complete_markets: bool = False  # also call completeMarket (needs MARKET_MANAGER on the keeper wallet)
+    keeper_max_gas_gwei: int = 25  # at least 20 on Arc
+    keeper_max_tx_per_run: int = 10
+    keeper_interval_seconds: float = 30.0
+    keeper_min_balance: float = 0.5  # USDC; below this the keeper pauses and the dashboard warns
+
     @field_validator("database_url")
     @classmethod
     def _normalize_database_url(cls, v: str) -> str:

@@ -300,6 +300,39 @@ function FeeCollectorForm({ current }: { current: string }) {
   )
 }
 
+interface KeeperStatus {
+  status: null | { enabled: boolean; dry_run: boolean; complete_markets: boolean; address: string; balance: number; min_balance: number; updated_at: string; error?: string; totals?: Record<string, number>; last_results?: Record<string, unknown> }
+  recent: { action: string; entity: string; tx: string | null; ok: boolean | null; at: string }[]
+}
+
+/** The keeper worker does trust-free chores (expire orders, refund cancelled markets). This panel only reports; it has no controls. */
+function KeeperPanel() {
+  const { data } = useQuery({ queryKey: ['admin-keeper'], queryFn: () => api.get<KeeperStatus>('/admin/keeper'), refetchInterval: 30000 })
+  const st = data?.status
+  return (
+    <div className="glass space-y-3 p-4">
+      <h3 className="display text-lg">Keeper</h3>
+      {!st ? (
+        <p className="text-sm text-[var(--muted)]">Not running. It clears expired orders and refunds cancelled markets for everyone, using a small wallet that only holds gas. Turn it on with KEEPER_ENABLED=true and KEEPER_PRIVATE_KEY in the environment (see the runbook). It can never cancel a market, open or extend settlement, or move anyone's funds.</p>
+      ) : (
+        <>
+          <dl className="grid gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
+            <div className="ledger-row"><dt className="text-[var(--muted)]">Wallet</dt><dd className="mono text-xs">{shortAddr(st.address)}</dd></div>
+            <div className="ledger-row"><dt className="text-[var(--muted)]">Gas balance</dt><dd className="tabular-nums">{st.balance.toFixed(4)} USDC</dd></div>
+            <div className="ledger-row"><dt className="text-[var(--muted)]">Last pass</dt><dd>{fmtDate(st.updated_at)}</dd></div>
+            <div className="ledger-row"><dt className="text-[var(--muted)]">Mode</dt><dd>{st.dry_run ? 'dry run (sends nothing)' : 'live'}{st.complete_markets ? ', completes markets' : ''}</dd></div>
+          </dl>
+          {st.error && <Notice tone="warn">{st.error}</Notice>}
+          {st.totals && Object.keys(st.totals).length > 0 && <p className="text-xs text-[var(--muted)]">Since start: {Object.entries(st.totals).map(([k, v]) => `${k.replace('_', ' ')} ${v}`).join(', ')}</p>}
+          {(data?.recent.length ?? 0) > 0 && (
+            <DataTable head={['When', 'Action', 'Target', 'Result']} rows={(data?.recent ?? []).map((r) => [fmtDate(r.at), r.action.replace('keeper.', '').replace('_', ' '), r.entity, r.ok ? 'ok' : 'failed'])} />
+          )}
+        </>
+      )}
+    </div>
+  )
+}
+
 /** Pause stops NEW orders only. Cancel, settle, default claims and refunds keep working. Needs the PAUSER role on the contract. */
 function PauseControl() {
   const { data: cfg } = useConfig()
@@ -362,6 +395,7 @@ export function SettingsPage() {
       </div>
       <FeeCollectorForm current={data.fee_collector} />
       <PauseControl />
+      <KeeperPanel />
       <div className="glass space-y-3 rounded-3xl p-4">
         <Field label="Platform notice (shown as a banner)" htmlFor="nt" hint="Plain text, up to 500 characters.">
           <input id="nt" className="field" maxLength={500} value={notice ?? data.notice} onChange={(e) => setNotice(e.target.value)} />

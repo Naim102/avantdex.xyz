@@ -84,7 +84,7 @@ Rule of thumb: automate what only moves funds to their rightful owners (cleanup,
 
 ## 5. Plan
 
-**Status 2026-11-10: Phase 1 is implemented** (token pre-flight with decimals check and typed confirmation before settlement, TGE date and UTC preview on the market form, edit and discard of drafts, Needs attention list on the admin overview, pause button on Settings, deadline reminders for buyers and sellers, optional admin webhook). Phases 2 to 4 are still open. Details of what shipped are in docs/RUNBOOK.md, section Operations.
+**Status 2026-11-10: Phase 1 is implemented** (token pre-flight with decimals check and typed confirmation before settlement, TGE date and UTC preview on the market form, edit and discard of drafts, Needs attention list on the admin overview, pause button on Settings, deadline reminders for buyers and sellers, optional admin webhook). **Phase 2 (keeper) is implemented** with the permissionless duties plus an optional, off-by-default completeMarket. Phases 3 and 4 are still open. Details of what shipped are in docs/RUNBOOK.md, section Operations.
 
 ### Phase 1: dashboard and backend only (no contract change, about 1 week)
 1. **Token pre-flight panel** (H1, H2): read `decimals/name/symbol/totalSupply/code` from the chain, compare with the project record and the typed decimals, block mismatches, require a typed confirmation, audit-log the result.

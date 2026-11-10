@@ -137,6 +137,14 @@ def attention_items(db: Session, now: dt.datetime | None = None) -> list[dict]:
         stale = (now - _aware(st.updated_at)).total_seconds() if st.updated_at else None
         if st.chain_head - st.last_block > 100 or (stale is not None and stale > 180):
             add("high", "indexer", "Indexer is behind or stopped", f"Indexed to block {st.last_block}, chain at {st.chain_head}. Market data on the site may be stale.", "/admin")
+    krow = db.get(Setting, "keeper_status")
+    if krow and krow.value:
+        k = json.loads(krow.value)
+        age = (now - dt.datetime.fromisoformat(k["updated_at"])).total_seconds() if k.get("updated_at") else None
+        if k.get("error"):
+            add("warn", "keeper", "Keeper needs attention", k["error"], "/admin/settings")
+        elif age is not None and age > 600:
+            add("warn", "keeper_stale", "Keeper has stopped", f"Last pass was {int(age // 60)} minutes ago. Check the keeper container.", "/admin/settings")
     waiting = db.scalar(select(func.count(Project.id)).where(Project.status == "Submitted")) or 0
     if waiting:
         add("info", "apps", f"{waiting} application(s) waiting for review", "Approve, ask for changes or reject.", "/admin/applications")

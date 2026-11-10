@@ -286,6 +286,7 @@ await test('admin: Needs attention list, token pre-flight blocks wrong decimals,
   // pause toggle on the contract
   await admin.goto(BASE + '/admin/settings', { waitUntil: 'networkidle2' })
   await sleep(1500)
+  if (!(await admin.evaluate(() => /Keeper/.test(document.body.innerText) && /Not running/.test(document.body.innerText)))) throw new Error('keeper panel missing')
   await mustClick(admin, /^Pause new orders$/)
   await waitFor(() => admin.evaluate(() => /paused/.test(document.body.innerText) && !!([...document.querySelectorAll('button')].find((b) => /^Unpause new orders$/.test(b.textContent)))), 'paused', 30000)
   await mustClick(admin, /^Unpause new orders$/)

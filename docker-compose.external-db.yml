@@ -56,7 +56,26 @@ services:
     environment:
       <<: *backend-env
       INDEXER_POLL_SECONDS: ${INDEXER_POLL_SECONDS:-2}
+      ADMIN_WEBHOOK_URL: ${ADMIN_WEBHOOK_URL:-}
+      OPS_INTERVAL_SECONDS: ${OPS_INTERVAL_SECONDS:-60}
     command: ["python", "-m", "app.indexer.run"]
+
+  # Optional chores worker (expire orders, refund cancelled markets). Idles unless KEEPER_ENABLED=true.
+  keeper:
+    build: ./backend
+    restart: unless-stopped
+    networks: [default, coolify]
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      <<: *backend-env
+      KEEPER_ENABLED: ${KEEPER_ENABLED:-false}
+      KEEPER_PRIVATE_KEY: ${KEEPER_PRIVATE_KEY:-}
+      KEEPER_DRY_RUN: ${KEEPER_DRY_RUN:-false}
+      KEEPER_COMPLETE_MARKETS: ${KEEPER_COMPLETE_MARKETS:-false}
+      KEEPER_MAX_GAS_GWEI: ${KEEPER_MAX_GAS_GWEI:-25}
+    command: ["python", "-m", "app.keeper_run"]
 
   web:
     build:

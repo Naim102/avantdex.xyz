@@ -120,6 +120,16 @@ docker run --rm -v "$PWD:/app" -v "$PWD/../contracts/out:/out:ro" -w /app \
 * **Webhook:** set `ADMIN_WEBHOOK_URL` (https) to receive a JSON message `{"text": ...}` once per new high or warn item.
 * **Pause** (Admin -> Settings) stops new orders on every market. It needs the `PAUSER` role. Cancel, settle, default claims and refunds keep working.
 
+## Keeper (optional)
+
+A small worker (`keeper` service in the compose files) that does the on-chain chores nobody needs to be trusted for: `expireOrders` (refunds go to the order owners) and `refundTrade` for cancelled or abandoned markets (each side gets its own funds back). It idles and costs nothing unless enabled.
+
+1. Create a **new wallet** just for this and send it a little USDC for gas (Arc's gas token; a few cents per call). It needs no role. Never use an admin, deployer or personal key.
+2. Set `KEEPER_ENABLED=true` and `KEEPER_PRIVATE_KEY=0x...` on the keeper service. Start with `KEEPER_DRY_RUN=true` to see in the logs what it would send, then set it to `false`.
+3. Watch **Admin -> Settings -> Keeper** (wallet, gas balance, last pass, recent actions). The overview warns when the keeper is low on gas, failing or silent for 10 minutes. Every action is in the audit log with role `keeper`.
+
+What it will never do: cancel or suspend a market, open or extend settlement, pause, or touch roles and fees. `KEEPER_COMPLETE_MARKETS=true` additionally calls `completeMarket` once every trade is closed; that needs `MARKET_MANAGER` on the keeper wallet, so leave it off unless you accept a hot key with that role. Due work is judged by the chain's clock, each pass is limited to `KEEPER_MAX_TX_PER_RUN` transactions, and a transaction that would revert is skipped before it costs gas.
+
 ## Operations notes
 
 * **Pause** blocks only new orders. Cancel, settle, default claims and refunds always work.
