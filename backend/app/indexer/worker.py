@@ -12,7 +12,7 @@ from __future__ import annotations
 import logging
 import time
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 from web3 import Web3
 from web3._utils.events import get_event_data
@@ -23,6 +23,7 @@ from ..db import SessionLocal
 from ..models import (
     ChainEvent,
     Claimable,
+    Dispute,
     IndexerState,
     Market,
     Notification,
@@ -96,8 +97,36 @@ class Indexer:
             )
             db.add(st)
             db.commit()
-        elif st.contract != addr or st.chain_id != self.settings.chain_id:
-            raise RuntimeError("indexer_state belongs to a different chain/contract; use a fresh database")
+        elif st.chain_id != self.settings.chain_id:
+            raise RuntimeError("indexer_state belongs to a different chain; use a fresh database")
+        elif st.contract != addr:
+            # a new contract was deployed on the same chain: drop what was indexed from the old one (off-chain data stays)
+            st = self._reset_for_new_contract(db, st, addr)
+        return st
+
+    def _reset_for_new_contract(self, db: Session, st: IndexerState, addr: str) -> IndexerState:
+        """Forget everything derived from the previous contract and start again from the new deploy block.
+
+        Kept: projects (and their badges and history), listing requests, users, admins, audit logs, settings.
+        Removed: chain events, orders, trades, claimable balances, markets that exist on the old contract, disputes
+        and trade notifications (they point at old trade ids). Projects that were tied to an old market return to Approved.
+        """
+        log.warning("contract changed from %s to %s: resetting indexed chain data", st.contract, addr)
+        for model in (ChainEvent, Order, Trade, Claimable, Dispute):
+            db.execute(delete(model))
+        db.execute(delete(Notification).where(Notification.kind.like("trade%")))
+        old = list(db.scalars(select(Market).where(Market.onchain_id.is_not(None))))
+        for m in old:
+            if m.project_id is not None:
+                p = db.get(Project, m.project_id)
+                if p is not None and p.status in ("Market Setup", "Live", "Suspended", "Completed"):
+                    db.add(ProjectStatusHistory(project_id=p.id, from_status=p.status, to_status="Approved", actor="indexer", reason="contract replaced"))
+                    p.status = "Approved"
+            db.delete(m)
+        st.contract = addr
+        st.last_block = max(self.settings.exchange_deploy_block - 1, 0)
+        st.chain_head = 0
+        db.commit()
         return st
 
     def _ts(self, block: int) -> int:
@@ -185,6 +214,10 @@ class Indexer:
     def _on_MarketCreated(self, db, a, tx, raw, ts, touched) -> None:
         ref = _hex(a["metadataRef"])
         m = db.scalar(select(Market).where(Market.metadata_ref == ref))
+        if m is not None and m.onchain_id is not None and m.onchain_id != a["marketId"]:
+            # the same draft was sent to the chain more than once: the first market keeps the record, the copy is ignored
+            log.warning("market %s repeats the metadata of market %s; ignored", a["marketId"], m.onchain_id)
+            return
         if m is None:  # market created on-chain without an off-chain record
             m = Market(
                 metadata_ref=ref,

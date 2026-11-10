@@ -47,6 +47,12 @@ function MarketActions({ m, cfg }: { m: AdminMarket; cfg: AppConfig }) {
   const [hours, setHours] = useState('24')
   const [deadline, setDeadline] = useState('')
   const hasRole = useRoleCheck(cfg)
+  const createdKey = `avantdex.created.${m.id}`
+  const [createdAt, setCreatedAt] = useState(() => {
+    const t = Number(localStorage.getItem(createdKey) ?? 0)
+    return Date.now() - t < 15 * 60 * 1000 ? t : 0 // a record older than 15 minutes is ignored
+  })
+  const waiting = m.status === 'draft' && createdAt > 0
   const id = m.onchain_id
 
   const refresh = () => {
@@ -80,9 +86,23 @@ function MarketActions({ m, cfg }: { m: AdminMarket; cfg: AppConfig }) {
       {status === 'draft' && (
         <div className="space-y-2">
           <p className="text-[var(--subtle)]">Step 1: create the market on-chain with the exact draft parameters. {m.created_by && `Draft by ${shortAddr(m.created_by)}.`}</p>
-          <button className="btn btn-primary !min-h-9" disabled={tx.busy} onClick={() => void chain('Create market on-chain', 'createMarket', [p.token, BigInt(p.lotSize), BigInt(p.tickSize), BigInt(p.minLots), BigInt(p.maxLots), BigInt(p.tradingStart), BigInt(p.tradingEnd), p.metadataRef])}>
-            {tx.busy ? <Spinner /> : 'Create on-chain'}
-          </button>
+          {waiting ? (
+            <Notice tone="warn">
+              A create transaction for this draft was already confirmed. Wait for the site to pick it up (usually seconds, this list refreshes by itself). Sending it again would create a second, unused market on the contract.
+              {' '}
+              <button className="underline" onClick={() => { localStorage.removeItem(createdKey); setCreatedAt(0) }}>It never appeared: allow creating again</button>
+            </Notice>
+          ) : (
+            <button
+              className="btn btn-primary !min-h-9"
+              disabled={tx.busy}
+              onClick={() => void chain('Create market on-chain', 'createMarket', [p.token, BigInt(p.lotSize), BigInt(p.tickSize), BigInt(p.minLots), BigInt(p.maxLots), BigInt(p.tradingStart), BigInt(p.tradingEnd), p.metadataRef]).then((r) => {
+                if (r) { localStorage.setItem(createdKey, String(Date.now())); setCreatedAt(Date.now()) }
+              })}
+            >
+              {tx.busy ? <Spinner /> : 'Create on-chain'}
+            </button>
+          )}
         </div>
       )}
       {status === 'Setup' && (

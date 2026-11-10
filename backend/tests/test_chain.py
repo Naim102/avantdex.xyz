@@ -328,3 +328,57 @@ def test_indexer_is_idempotent_and_reports_lag(client, chain):
     assert snapshot() == first
     h = client.get("/api/health").json()
     assert h["indexer"]["lag_blocks"] == 0 and h["indexer"]["last_block"] >= chain.start_block
+
+
+def test_a_draft_sent_to_the_chain_twice_keeps_the_first_market(client, chain):
+    """Regression: clicking Create on-chain again created copies that took over the draft record (the draft pointed at the last copy)."""
+    pid, sh = approved_project(client, "Twice", "TWC")
+    mk = create_market_on_chain(client, chain, pid, sh)
+    p = mk["onchain_params"]
+    for _ in range(2):
+        chain.send(
+            chain.ex.functions.createMarket(
+                Web3.to_checksum_address(p["token"]), int(p["lotSize"]), int(p["tickSize"]), int(p["minLots"]), int(p["maxLots"]),
+                p["tradingStart"], p["tradingEnd"], bytes.fromhex(p["metadataRef"][2:]),
+            ),
+            chain.deployer,
+        )
+    indexer()
+    got = client.get(f"/api/admin/markets/{mk['id']}", headers=sh).json()
+    first_id = chain.ex.functions.marketCount().call() - 2
+    assert got["onchain_id"] == first_id and got["status"] == "Setup"
+    from sqlalchemy import func, select
+
+    from app.db import SessionLocal
+    from app.models import Market
+
+    with SessionLocal() as db:
+        assert db.scalar(select(func.count(Market.id))) == 1  # no orphan rows for the copies
+
+
+def test_new_contract_resets_chain_data_but_keeps_projects(client, chain, monkeypatch):
+    from app import db as app_db
+    from app.config import get_settings
+    from app.db import SessionLocal
+    from app.models import ChainEvent, Market, Project
+    from sqlalchemy import func, select
+
+    pid, sh = approved_project(client, "Moves", "MOV")
+    mk = create_market_on_chain(client, chain, pid, sh)
+    indexer()
+    with SessionLocal() as db:
+        assert db.scalar(select(func.count(ChainEvent.id))) > 0
+        db.get(Project, pid).status = "Live"
+        db.commit()
+    # deploy a second exchange and point the indexer at it
+    ex2 = chain.deploy("AvantdexExchange", "AvantdexExchange", chain.usdc.address, COLLECTOR, chain.deployer)
+    monkeypatch.setenv("EXCHANGE_ADDRESS", ex2.address)
+    monkeypatch.setenv("EXCHANGE_DEPLOY_BLOCK", str(chain.w3.eth.block_number))
+    get_settings.cache_clear()
+    app_db.reset_engine()
+    indexer()
+    with SessionLocal() as db:
+        assert db.scalar(select(func.count(Market.id))) == 0
+        assert db.get(Project, pid).status == "Approved"
+        assert db.get(Project, pid).name == "Moves"
+        assert db.scalar(select(func.count(ChainEvent.id))) <= 4  # only the new contract's setup events
