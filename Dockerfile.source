@@ -1,0 +1,39 @@
+# syntax=docker/dockerfile:1
+#
+# Builds the app from source inside Docker. Needs about 1.5 GB of free RAM during `vite build`.
+# On small servers use the default `Dockerfile`, which only serves the prebuilt files in deploy/dist.
+
+# ---- deps: bun installs from bun.lock (fast, reproducible) ----
+FROM oven/bun:1.3.14 AS deps
+WORKDIR /app
+COPY package.json bun.lock ./
+# --ignore-scripts: optional native addons (utf-8-validate, bufferutil) need node-gyp and are not required.
+# Retries because bun occasionally reports a corrupted tarball on flaky networks.
+RUN for i in 1 2 3; do bun install --frozen-lockfile --ignore-scripts && exit 0; echo "bun install failed (attempt $i)"; sleep 3; done; exit 1
+
+# ---- build: Node runs vite. Node needs far less memory than Bun for this build, which matters on small servers ----
+FROM node:22-bookworm-slim AS build
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+
+# VITE_* values are baked into the JS bundle at build time (they are public, never put secrets here).
+ARG VITE_ALLOCX_MARKETPLACE=0x1af972dc5f777088ff10a9b3fc2ee076b23e80b1
+ARG VITE_ALLOCX_DEPLOY_BLOCK=69835919
+ARG VITE_RPC_URL=https://rpc.testnet.arc.io
+ENV VITE_ALLOCX_MARKETPLACE=$VITE_ALLOCX_MARKETPLACE \
+    VITE_ALLOCX_DEPLOY_BLOCK=$VITE_ALLOCX_DEPLOY_BLOCK \
+    VITE_RPC_URL=$VITE_RPC_URL
+
+# Cap V8's heap so the build fails fast instead of thrashing swap if the server is too small.
+ENV NODE_OPTIONS=--max-old-space-size=1536
+RUN node node_modules/vite/bin/vite.js build
+
+# ---- runtime: nginx serves the static files ----
+FROM nginx:1.27-alpine AS runtime
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=build /app/dist /usr/share/nginx/html
+
+EXPOSE 80
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD wget -qO- http://127.0.0.1/healthz >/dev/null || exit 1

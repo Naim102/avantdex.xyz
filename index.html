@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#eaf0fb" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="apple-touch-icon" href="/logo.png" />
+    <script>
+      // set the theme before first paint (no flash): saved choice, else sky. Retired themes map to the nearest one.
+      try {
+        var t = localStorage.getItem("avantdex.theme");
+        if (t === "dark" || t === "terminal") t = "ink";
+        document.documentElement.setAttribute("data-theme", t === "ink" ? "ink" : "sky");
+      } catch (e) {
+        document.documentElement.setAttribute("data-theme", "sky");
+      }
+    </script>
+    <meta name="description" content="Avantdex. Pre-market trading on Arc. Order-book trading of upcoming tokens settled in USDC with escrow." />
+    <title>Avantdex | Pre-market trading on Arc</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=IBM+Plex+Mono:wght@400;500;600&display=swap"
+    />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

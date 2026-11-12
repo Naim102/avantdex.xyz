@@ -1,0 +1,118 @@
+# Avantdex on Coolify (or any Docker host): PostgreSQL + API + indexer + web (nginx, prebuilt static frontend).
+#
+# Coolify: New Resource -> Docker Compose -> this repo, branch main. Set the environment variables below in the
+# Coolify UI (see .env.example), then attach your domain to the `web` service on port 80. Coolify's proxy
+# handles HTTPS, so nothing is published on the host. The browser only ever talks to `web`; nginx forwards
+# /api/* to the API container, so no CORS is needed.
+#
+# Required secrets: POSTGRES_PASSWORD and JWT_SECRET. The contract address defaults to the Arc Testnet deployment;
+# see docs/RUNBOOK.md to deploy your own.
+name: avantdex
+
+x-backend-env: &backend-env
+  # Bundled PostgreSQL by default. To use an external/managed database set DATABASE_URL to a full SQLAlchemy URL
+  # (postgresql+psycopg://user:pass@host:5432/db) and ignore the postgres service.
+  DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://${POSTGRES_USER:-avantdex}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-avantdex}}
+  # Arc Testnet. Testnet and mainnet settings must never be mixed.
+  CHAIN_ID: ${CHAIN_ID:-5042002}
+  RPC_URL: ${RPC_URL:-https://rpc.testnet.arc.io}
+  EXPLORER_URL: ${EXPLORER_URL:-https://explorer.testnet.arc.io}
+  USDC_ADDRESS: ${USDC_ADDRESS:-0x3600000000000000000000000000000000000000}
+  # Defaults point at the Arc Testnet deployment (public values). Override both when you redeploy or move to mainnet.
+  EXCHANGE_ADDRESS: ${EXCHANGE_ADDRESS:-0xb48935EeA3B7264a53098B1DB920C3fCa09C0283}
+  EXCHANGE_DEPLOY_BLOCK: ${EXCHANGE_DEPLOY_BLOCK:-71711143}
+  FEE_COLLECTOR: ${FEE_COLLECTOR:-0x136a2C17E0E6C077F48F489BeC6DBCE3202CEbd6}
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-avantdex}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-avantdex}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-avantdex} -d $${POSTGRES_DB:-avantdex}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build: ./backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      <<: *backend-env
+      ENV: production
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET to a random value of at least 32 characters}
+      AUTH_DOMAIN: ${AUTH_DOMAIN:-localhost}
+      AUTH_URI: ${AUTH_URI:-https://localhost}
+      BOOTSTRAP_ADMIN_ADDRESSES: ${BOOTSTRAP_ADMIN_ADDRESSES:-}
+      ADMIN_ROLES: ${ADMIN_ROLES:-}
+      REQUIRE_TWO_PERSON_APPROVAL: ${REQUIRE_TWO_PERSON_APPROVAL:-false}
+    expose:
+      - "8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://localhost:8000/api/livez')"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+      start_period: 120s
+
+  indexer:
+    build: ./backend
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      <<: *backend-env
+      INDEXER_POLL_SECONDS: ${INDEXER_POLL_SECONDS:-2}
+      ADMIN_WEBHOOK_URL: ${ADMIN_WEBHOOK_URL:-}
+      OPS_INTERVAL_SECONDS: ${OPS_INTERVAL_SECONDS:-60}
+    command: ["python", "-m", "app.indexer.run"]
+
+  # Optional chores worker (expire orders, refund cancelled markets). Not started by default (saves memory on small
+  # servers): set COMPOSE_PROFILES=keeper and KEEPER_ENABLED=true to run it. See docs/KEEPER.md.
+  keeper:
+    profiles: ["keeper"]
+    build: ./backend
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      <<: *backend-env
+      KEEPER_ENABLED: ${KEEPER_ENABLED:-false}
+      KEEPER_PRIVATE_KEY: ${KEEPER_PRIVATE_KEY:-}
+      KEEPER_DRY_RUN: ${KEEPER_DRY_RUN:-false}
+      KEEPER_COMPLETE_MARKETS: ${KEEPER_COMPLETE_MARKETS:-false}
+      KEEPER_MAX_GAS_GWEI: ${KEEPER_MAX_GAS_GWEI:-25}
+      KEEPER_MAX_TX_PER_RUN: ${KEEPER_MAX_TX_PER_RUN:-10}
+      KEEPER_INTERVAL_SECONDS: ${KEEPER_INTERVAL_SECONDS:-30}
+      KEEPER_MIN_BALANCE: ${KEEPER_MIN_BALANCE:-0.5}
+    command: ["python", "-m", "app.keeper_run"]
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    expose:
+      - "80"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/healthz"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+
+volumes:
+  pgdata:
