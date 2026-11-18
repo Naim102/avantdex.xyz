@@ -29,7 +29,7 @@ Everything under `/admin`. Code: `src/pages/admin/*`, `backend/app/routers/admin
 ## Project and market flow
 
 0. **Arc only.** The blockchain of every project is **Arc** (the forms show it fixed, the API refuses any other chain with `arc_only`). Trades settle on Arc and the seller delivers the token on Arc, so a token that launches elsewhere cannot be settled. Names such as "Arc Testnet" are accepted and stored as "Arc".
-1. A project is submitted by its team (or added by an admin). Approval makes it visible as **Coming soon** (`GET /api/projects/upcoming`); it cannot be traded.
+1. A project is submitted by its team (or added by an admin). The **TGE date can be marked TBD** (to be determined) with a checkbox next to the date, in the application form and in the admin form: the date is then empty, the application counts as having an answer about the TGE, and the site shows "TBD" instead of a date. A market's own TGE date, set when the market is configured, takes over once it exists. Approval makes it visible as **Coming soon** (`GET /api/projects/upcoming`); it cannot be traded.
 2. An admin configures a market draft. The draft can be edited or discarded until the market exists on-chain.
 3. A wallet with `MARKET_MANAGER` creates it on-chain; the indexer binds the on-chain market to the draft through `metadataRef = keccak256(slug)`.
 4. **Verify configuration** reads the market back and compares every parameter, including token decimals. A mismatch blocks activation. Optional two-person approval (`REQUIRE_TWO_PERSON_APPROVAL`).

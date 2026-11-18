@@ -49,6 +49,7 @@ interface ProjectForm {
   allocation_info: string
   tge_info: string
   tge_date: string
+  tge_tbd: boolean
   documentation: string
   evidence: string
   team_wallet: string
@@ -56,7 +57,7 @@ interface ProjectForm {
 
 const EMPTY: ProjectForm = {
   name: '', token_name: '', token_symbol: '', logo_url: '', description: '', website: '', socials: '', category: 'Other', blockchain: 'Arc',
-  token_address: '', supply_info: '', allocation_info: '', tge_info: '', tge_date: '', documentation: '', evidence: '', team_wallet: '',
+  token_address: '', supply_info: '', allocation_info: '', tge_info: '', tge_date: '', tge_tbd: false, documentation: '', evidence: '', team_wallet: '',
 }
 
 interface MyProject {
@@ -76,6 +77,7 @@ interface MyProject {
   allocation_info: string
   tge_info: string
   tge_date: string | null
+  tge_tbd: boolean
   documentation: string[]
   evidence: string
   team_wallet: string
@@ -93,7 +95,8 @@ function payload(f: ProjectForm, wallet?: string) {
     team_wallet: f.team_wallet || wallet || '',
     socials: lines(f.socials),
     documentation: lines(f.documentation),
-    tge_date: f.tge_date ? new Date(f.tge_date).toISOString() : null,
+    tge_date: !f.tge_tbd && f.tge_date ? new Date(f.tge_date).toISOString() : null,
+    tge_tbd: f.tge_tbd,
   }
 }
 
@@ -183,6 +186,7 @@ export function SubmitProject() {
       allocation_info: p.allocation_info,
       tge_info: p.tge_info,
       tge_date: p.tge_date ? p.tge_date.slice(0, 10) : '',
+      tge_tbd: !!p.tge_tbd,
       documentation: p.documentation.join('\n'),
       evidence: p.evidence,
       team_wallet: p.team_wallet,
@@ -208,12 +212,12 @@ export function SubmitProject() {
     }
   }
 
-  const inp = (k: keyof ProjectForm, label: string, opts?: { hint?: string; type?: string; max?: number }) => (
+  const inp = (k: Exclude<keyof ProjectForm, 'tge_tbd'>, label: string, opts?: { hint?: string; type?: string; max?: number }) => (
     <Field label={label} htmlFor={k} hint={opts?.hint}>
       <input id={k} type={opts?.type ?? 'text'} className="field" maxLength={opts?.max} value={f[k]} onChange={(e) => set(k, e.target.value)} />
     </Field>
   )
-  const area = (k: keyof ProjectForm, label: string, hint?: string, max = 2000) => (
+  const area = (k: Exclude<keyof ProjectForm, 'tge_tbd'>, label: string, hint?: string, max = 2000) => (
     <Field label={label} htmlFor={k} hint={hint}>
       <textarea id={k} className="field min-h-24" maxLength={max} value={f[k]} onChange={(e) => set(k, e.target.value)} />
     </Field>
@@ -255,7 +259,20 @@ export function SubmitProject() {
               {area('supply_info', 'Token supply information')}
               {area('allocation_info', 'Allocation information')}
               <div className="grid gap-4 sm:grid-cols-2">
-                {inp('tge_date', 'Expected TGE date', { type: 'date' })}
+                <Field label="Expected TGE date" htmlFor="tge_date" hint={f.tge_tbd ? 'Marked as TBD (to be determined). Untick it when the date is fixed.' : undefined}>
+                  <div className="space-y-2">
+                    <input id="tge_date" type="date" className="field" value={f.tge_date} disabled={f.tge_tbd} onChange={(e) => set('tge_date', e.target.value)} />
+                    <label className="flex cursor-pointer items-center gap-2 text-sm font-semibold">
+                      <input
+                        type="checkbox"
+                        className="size-4 accent-[var(--accent)]"
+                        checked={f.tge_tbd}
+                        onChange={(e) => setF((s) => ({ ...s, tge_tbd: e.target.checked, tge_date: e.target.checked ? '' : s.tge_date }))}
+                      />
+                      TBD (to be determined)
+                    </label>
+                  </div>
+                </Field>
                 {area('tge_info', 'TGE information')}
               </div>
               {area('documentation', 'Project documentation links', 'One https:// link per line', 1000)}

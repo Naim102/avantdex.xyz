@@ -396,3 +396,26 @@ def test_only_tokens_on_arc_can_be_listed(client):
         r = create(client, h, w, blockchain=label)
         assert r.status_code == 200, (label, r.text)
         assert r.json()["blockchain"] == "Arc"  # stored in one canonical form
+
+
+def test_the_tge_date_can_be_tbd(client):
+    """A project whose team has not fixed the TGE date can say "TBD" instead of a date or free text."""
+    w = team()
+    h = login(client, w)
+    pid = create(client, h, w, tge_info="", tge_date=None).json()["id"]
+    r = client.post(f"/api/projects/{pid}/submit", headers=h)
+    assert r.status_code == 422 and "TGE information" in r.text  # nothing about the TGE yet
+
+    body = {**GOOD, "team_wallet": w.address, "tge_info": "", "tge_tbd": True, "tge_date": "2027-01-01T00:00:00Z"}
+    r = client.put(f"/api/projects/{pid}", json=body, headers=h)
+    assert r.status_code == 200, r.text
+    assert r.json()["tge_tbd"] is True
+    assert r.json()["tge_date"] is None  # "TBD" and a date exclude each other
+    assert client.post(f"/api/projects/{pid}/submit", headers=h).status_code == 200  # TBD counts as an answer
+
+    # back to a real date: TBD is switched off
+    r = client.put(f"/api/projects/{pid}", json={**body, "tge_tbd": False}, headers=h)
+    assert r.status_code in (200, 409)  # a submitted application is locked; the rule is checked on a fresh draft below
+    pid2 = create(client, h, w, tge_info="", tge_tbd=False, tge_date="2027-02-01T00:00:00Z").json()["id"]
+    got = client.get(f"/api/projects/mine/{pid2}", headers=h).json()
+    assert got["tge_tbd"] is False and got["tge_date"].startswith("2027-02-01")

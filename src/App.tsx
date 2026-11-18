@@ -15,6 +15,7 @@ import { LiveMarkets, MarketManagement, SettlementManagement } from '@/pages/adm
 import { AuditLogs, Disputes, Overview, Roles, SettingsPage, Users } from '@/pages/admin/Misc'
 import { EmptyState, Spinner } from '@/components/ui'
 import { Footer } from '@/components/Footer'
+import { BottomNav } from '@/components/BottomNav'
 import { CursorFx } from '@/components/CursorFx'
 
 // Circle's Bridge Kit is large: it is only downloaded when someone opens the bridge page.
@@ -56,7 +57,8 @@ export default function App() {
       <ScrollTop />
       <ScrollProgress />
       <CursorFx />
-      <div className="min-h-dvh">
+      {/* phones: room for the bottom bar */}
+      <div className="min-h-dvh pb-[calc(3.75rem+env(safe-area-inset-bottom))] lg:pb-0">
         <Header />
         <NetworkBanner />
         <PageFrame>
@@ -102,6 +104,7 @@ export default function App() {
         </PageFrame>
         <Footer />
       </div>
+      <BottomNav />
     </BrowserRouter>
   )
 }

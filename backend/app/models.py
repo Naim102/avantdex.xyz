@@ -15,6 +15,7 @@ from sqlalchemy import (
     JSON,
     BigInteger,
     Boolean,
+    false,
     DateTime,
     ForeignKey,
     Index,
@@ -106,6 +107,8 @@ class Project(Base):
     allocation_info: Mapped[str] = mapped_column(Text, default="")
     tge_info: Mapped[str] = mapped_column(Text, default="")
     tge_date: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # The team has not fixed the TGE date yet ("TBD", to be determined). Then tge_date stays empty.
+    tge_tbd: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
     documentation: Mapped[list] = mapped_column(JSON, default=list)
     evidence: Mapped[str] = mapped_column(Text, default="")
     team_wallet: Mapped[str] = mapped_column(String(42), default="")

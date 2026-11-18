@@ -25,6 +25,11 @@ export function fmtDay(iso?: string | null): string {
   return new Date(iso).toLocaleDateString(undefined, { dateStyle: 'medium' })
 }
 
+/** A TGE date for display: the date, or "TBD" when the team has not fixed it yet (to be determined). */
+export function tgeDay(iso?: string | null, tbd?: boolean): string {
+  return !iso && tbd ? 'TBD' : fmtDay(iso)
+}
+
 export function countdown(seconds: number): string {
   if (seconds <= 0) return 'Ended'
   const d = Math.floor(seconds / 86400)

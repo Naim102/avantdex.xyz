@@ -46,6 +46,7 @@ class ProjectIn(BaseModel):
     allocation_info: str = ""
     tge_info: str = ""
     tge_date: dt.datetime | None = None
+    tge_tbd: bool = False
     documentation: list[str] = Field(default_factory=list)
     evidence: str = ""
     team_wallet: str = ""
@@ -67,7 +68,8 @@ def _apply(p: Project, body: ProjectIn) -> None:
     p.supply_info = clean_text(body.supply_info, "Supply information", 2000)
     p.allocation_info = clean_text(body.allocation_info, "Allocation information", 2000)
     p.tge_info = clean_text(body.tge_info, "TGE information", 2000)
-    p.tge_date = body.tge_date
+    p.tge_tbd = body.tge_tbd
+    p.tge_date = None if body.tge_tbd else body.tge_date  # "TBD" and a date exclude each other
     p.documentation = [https_url(u, "Documentation link", required=True) for u in body.documentation[:10]]
     p.evidence = clean_text(body.evidence, "Ownership / authorisation evidence", 2000)
     p.team_wallet = evm_address(body.team_wallet, "Team wallet")
@@ -87,7 +89,7 @@ def _require_complete(p: Project) -> None:
         missing.append("at least one social link")
     if p.blockchain != "Arc":
         missing.append("a token on Arc (Avantdex lists only tokens deployed on Arc)")
-    if not (p.tge_info or p.tge_date):
+    if not (p.tge_info or p.tge_date or p.tge_tbd):
         missing.append("TGE information")
     if not p.evidence:
         missing.append("ownership / authorisation evidence")

@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
-import { AnimatePresence, motion } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { useAccount, useDisconnect, useSwitchChain } from 'wagmi'
 import { CIRCLE_CONNECTOR_ID } from '@/lib/circleWallet'
 import { ConnectKitButton } from 'connectkit'
 import { ConnectButton } from '@/components/ConnectButton'
 import { useQuery } from '@tanstack/react-query'
-import { Bell, ChevronDown, Copy, ExternalLink, LogOut, Menu, TriangleAlert, X } from 'lucide-react'
+import { Bell, ChevronDown, Copy, ExternalLink, LogOut, TriangleAlert } from 'lucide-react'
 import { toast } from 'sonner'
 import { Logo } from '@/components/Logo'
 import { CHAIN_ID, useAuth, useConfig, useUsdc } from '@/hooks/useApp'
@@ -59,7 +59,7 @@ function AccountMenu({ address }: { address: string }) {
   const item = 'flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-semibold hover:bg-[var(--tint-2)]'
   return (
     <div className="relative" ref={ref}>
-      <button onClick={() => setOpen((o) => !o)} aria-expanded={open} className="btn btn-ghost !min-h-11 !gap-1.5 !px-2.5 sm:!gap-2.5 sm:!px-3">
+      <button onClick={() => setOpen((o) => !o)} aria-expanded={open} className="btn btn-ghost !min-h-9 !gap-1.5 !px-2.5 !text-sm sm:!min-h-11 sm:!gap-2.5 sm:!px-3 sm:!text-base">
         <span className="tabular-nums whitespace-nowrap font-bold">
           {balance === undefined ? '…' : <><span className="sm:hidden">{fmtUsdc(balance).replace(/\.\d+$/, '')}</span><span className="hidden sm:inline">{fmtUsdc(balance)}</span></>}
         </span>
@@ -119,70 +119,10 @@ function NotificationBell() {
   })
   if (!auth.signedIn) return null
   return (
-    <Link to="/portfolio?tab=Notifications" className="btn btn-ghost relative !min-h-11 !px-3" aria-label={`Notifications${data?.unread ? `, ${data.unread} unread` : ''}`}>
+    <Link to="/portfolio?tab=Notifications" className="btn btn-ghost relative !min-h-9 !px-2.5 sm:!min-h-11 sm:!px-3" aria-label={`Notifications${data?.unread ? `, ${data.unread} unread` : ''}`}>
       <Bell className="size-4" />
       {!!data?.unread && <span className="absolute -right-2 -top-2 rounded-full border border-[var(--line)] bg-[var(--accent)] px-1.5 text-[10px] font-bold text-[var(--accent-ink)]">{data.unread}</span>}
     </Link>
-  )
-}
-
-/** Phones: the four links live behind one menu button, so the header stays a single row. */
-function MobileMenu() {
-  const [open, setOpen] = useState(false)
-  const { pathname } = useLocation()
-  const [lastPath, setLastPath] = useState(pathname)
-  if (lastPath !== pathname) {
-    setLastPath(pathname)
-    setOpen(false)
-  }
-  useEffect(() => {
-    if (!open) return
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false)
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [open])
-  return (
-    <div className="lg:hidden">
-      <button className="btn btn-ghost !min-h-11 !px-3" aria-expanded={open} aria-controls="mobile-nav" aria-label={open ? 'Close menu' : 'Open menu'} onClick={() => setOpen((o) => !o)}>
-        {open ? <X className="size-5" /> : <Menu className="size-5" />}
-      </button>
-      <AnimatePresence>
-        {open && (
-          <>
-            <motion.button
-              key="scrim"
-              aria-label="Close menu"
-              tabIndex={-1}
-              className="fixed inset-x-0 bottom-0 top-[var(--header-h,4.25rem)] z-20 bg-[rgba(20,20,22,0.35)]"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setOpen(false)}
-            />
-            <motion.nav
-              key="panel"
-              id="mobile-nav"
-              aria-label="Main"
-              className="absolute inset-x-0 top-full z-30 border-b border-[var(--line)] bg-[var(--bg)] px-3 pb-3 pt-2 shadow-lg"
-              initial={{ opacity: 0, y: -8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.18 }}
-            >
-              <ul className="mx-auto max-w-6xl space-y-1">
-                {NAV.map((n) => (
-                  <li key={n.to}>
-                    <NavLink to={n.to} end={n.end} className={({ isActive }) => `block rounded-lg px-3.5 py-3 text-base font-semibold ${isActive ? 'bg-[var(--accent)] text-[var(--accent-ink)]' : 'hover:bg-[var(--tint-2)]'}`}>
-                      {n.label}
-                    </NavLink>
-                  </li>
-                ))}
-              </ul>
-            </motion.nav>
-          </>
-        )}
-      </AnimatePresence>
-    </div>
   )
 }
 
@@ -190,10 +130,10 @@ export function Header() {
   const { data: cfg } = useConfig()
   return (
     <header className="sticky top-0 z-30 border-b border-[var(--line)] bg-[color-mix(in_srgb,var(--bg)_88%,transparent)] backdrop-blur-md">
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-3 py-3 sm:gap-3 sm:px-4">
+      <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-3 py-1.5 sm:gap-3 sm:px-4 sm:py-3">
         <Link to="/" className="flex items-center gap-2.5" aria-label="Avantdex home">
-          <Logo className="size-9 sm:size-10" />
-          <span className="display text-lg max-[359px]:hidden sm:text-xl">Avantdex</span>
+          <Logo className="size-8 sm:size-10" />
+          <span className="display text-base max-[359px]:hidden sm:text-xl">Avantdex</span>
           {cfg?.chain_id === 5042002 && <span className="chip hidden sm:inline-flex" title="Running on Arc Testnet, test USDC only">Testnet</span>}
         </Link>
         <nav className="hidden gap-1 lg:flex" aria-label="Main">
@@ -210,13 +150,12 @@ export function Header() {
               isConnected && address ? (
                 <AccountMenu address={address} />
               ) : (
-                <ConnectButton className="btn btn-primary !px-3.5 sm:!px-5">
+                <ConnectButton className="btn btn-primary !min-h-9 !px-3.5 !text-sm sm:!min-h-11 sm:!px-5 sm:!text-base">
                   Connect<span className="hidden sm:inline">&nbsp;Wallet</span>
                 </ConnectButton>
               )
             }
           </ConnectKitButton.Custom>
-          <MobileMenu />
         </div>
       </div>
     </header>
@@ -242,7 +181,8 @@ export function NetworkBanner() {
         <div className="border-b border-[var(--line)] bg-[var(--surface)] px-3 py-1.5 text-center text-xs font-bold text-[var(--ink)] sm:px-4 sm:py-2 sm:text-sm" role="note" data-testid="testnet-banner">
           <span className="chip mr-2 align-middle" style={{ background: 'var(--accent)', color: 'var(--accent-ink)' }}>Testnet</span>
           <span className="align-middle font-semibold">
-            Avantdex is live on Arc Testnet (chain {cfg.chain_id}). Trades use test USDC with no real value and the contract is not audited.{' '}
+            <span className="sm:hidden">Arc Testnet: test USDC only, not audited.</span>
+            <span className="hidden sm:inline">Avantdex is live on Arc Testnet (chain {cfg.chain_id}). Trades use test USDC with no real value and the contract is not audited.</span>{' '}
             <a className="underline" href="https://faucet.circle.com" target="_blank" rel="noopener noreferrer">Get test USDC</a>
           </span>
         </div>

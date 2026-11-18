@@ -124,6 +124,7 @@ def project_public(p: Project) -> dict:
         "allocation_info": p.allocation_info,
         "tge_info": p.tge_info,
         "tge_date": iso(p.tge_date),
+        "tge_tbd": bool(p.tge_tbd),
         "documentation": p.documentation,
         "badges": active_badges(p),
     }

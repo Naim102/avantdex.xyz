@@ -103,6 +103,8 @@ export interface ProjectPublic {
   allocation_info: string
   tge_info: string
   tge_date: string | null
+  /** The team has not fixed the TGE date yet: shown as TBD. */
+  tge_tbd: boolean
   documentation: string[]
   badges: Badge[]
 }
@@ -150,6 +152,7 @@ export interface Market {
   trading_start: string
   trading_end: string
   tge_date: string | null
+  tge_tbd: boolean
   settlement_opened_at: string | null
   settlement_deadline: string | null
   open_trades: number
@@ -257,6 +260,7 @@ export interface Position {
     lot_size: string
     token_decimals: number
     tge_date: string | null
+    tge_tbd: boolean
     trading_end: string | null
     settlement_deadline: string | null
   }

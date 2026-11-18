@@ -49,7 +49,7 @@ The overview opens with one summary band of four wallet figures, then "Needs you
 
 ## Responsive
 
-No sideways scrolling from 320 px up. The header is one row on phones (logo, wallet, menu button; the four links open in a menu that closes on navigation, Escape and outside tap). Tables become cards on phones. Tap targets are at least 44 px.
+No sideways scrolling from 320 px up. **Phones have a bottom navigation bar** (`src/components/BottomNav.tsx`): Home, Explore, Portfolio, Bridge and List, fixed to the bottom of the screen within thumb reach, the current page marked, safe-area aware, hidden from the `lg` breakpoint where the header carries the links. The page reserves room for it, so the footer is never covered. The **header is small on phones** (about 48 px: logo, notifications, wallet; no menu button) and larger from `sm`. The testnet strip is one short line on phones. Tables become cards on phones. Tap targets in the page are at least 44 px; the compact header buttons are 36 px.
 
 ## Screenshots and deck
 

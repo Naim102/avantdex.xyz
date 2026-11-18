@@ -171,6 +171,7 @@ def market_json(m: Market, stats: dict | None = None) -> dict:
         "trading_start": iso(m.trading_start),
         "trading_end": iso(m.trading_end),
         "tge_date": iso(m.tge_date or (p.tge_date if p else None)),
+        "tge_tbd": bool(p and p.tge_tbd and not (m.tge_date or p.tge_date)),
         "settlement_opened_at": iso(m.settlement_opened_at),
         "settlement_deadline": iso(m.settlement_deadline),
         "open_trades": m.open_trades,
@@ -596,7 +597,7 @@ def portfolio_positions(address: str, db: Session = Depends(get_db)) -> dict:
             "market": {
                 "slug": m.slug, "status": m.status, "name": p.name if p else None, "symbol": p.token_symbol if p else None,
                 "logo_url": p.logo_url if p else "", "token_address": m.token_address, "lot_size": str(m.lot_size), "token_decimals": m.token_decimals,
-                "tge_date": iso(m.tge_date or (p.tge_date if p else None)), "trading_end": iso(m.trading_end),
+                "tge_date": iso(m.tge_date or (p.tge_date if p else None)), "tge_tbd": bool(p and p.tge_tbd and not (m.tge_date or p.tge_date)), "trading_end": iso(m.trading_end),
                 "settlement_deadline": iso(m.settlement_deadline),
             },
         })

@@ -26,6 +26,7 @@ export interface AdminProject {
   allocation_info: string
   tge_info: string
   tge_date: string | null
+  tge_tbd?: boolean
   token_address: string
   blockchain: string
   category: string
@@ -55,7 +56,7 @@ function useProjects(status = '') {
 interface FormState {
   name: string; token_symbol: string; token_name: string; logo_url: string; description: string; website: string; socials: string
   category: string; blockchain: string; token_address: string; supply_info: string; allocation_info: string; tge_info: string
-  tge_date: string; documentation: string; evidence: string; team_wallet: string; status: string
+  tge_date: string; tge_tbd: boolean; documentation: string; evidence: string; team_wallet: string; status: string
 }
 
 const lines = (v: string) => v.split(/[\n,]/).map((x) => x.trim()).filter(Boolean)
@@ -69,18 +70,18 @@ function ProjectFormModal({ project, onClose }: { project?: AdminProject; onClos
     description: project?.description ?? '', website: project?.website ?? '', socials: (project?.socials ?? []).join('\n'),
     category: project?.category ?? 'Other', blockchain: 'Arc', token_address: project?.token_address ?? '',
     supply_info: project?.supply_info ?? '', allocation_info: project?.allocation_info ?? '', tge_info: project?.tge_info ?? '',
-    tge_date: project?.tge_date ? project.tge_date.slice(0, 16) : '', documentation: (project?.documentation ?? []).join('\n'),
+    tge_date: project?.tge_date ? project.tge_date.slice(0, 16) : '', tge_tbd: !!project?.tge_tbd, documentation: (project?.documentation ?? []).join('\n'),
     evidence: project?.evidence ?? '', team_wallet: project?.team_wallet ?? '', status: 'Approved',
   }))
   const [state, setState] = useState<{ busy: boolean; error?: string }>({ busy: false })
-  const set = (k: keyof FormState, v: string) => setF((x) => ({ ...x, [k]: v }))
+  const set = (k: Exclude<keyof FormState, 'tge_tbd'>, v: string) => setF((x) => ({ ...x, [k]: v }))
   const submit = async () => {
     setState({ busy: true })
     try {
       const body = {
         name: f.name, token_symbol: f.token_symbol, token_name: f.token_name, logo_url: f.logo_url, description: f.description, website: f.website,
         socials: lines(f.socials), category: f.category, blockchain: f.blockchain, token_address: f.token_address, supply_info: f.supply_info,
-        allocation_info: f.allocation_info, tge_info: f.tge_info, tge_date: f.tge_date ? new Date(f.tge_date).toISOString() : null,
+        allocation_info: f.allocation_info, tge_info: f.tge_info, tge_date: !f.tge_tbd && f.tge_date ? new Date(f.tge_date).toISOString() : null, tge_tbd: f.tge_tbd,
         documentation: lines(f.documentation), evidence: f.evidence, team_wallet: f.team_wallet,
       }
       if (project) await api.put(`/admin/projects/${project.id}`, body)
@@ -93,7 +94,7 @@ function ProjectFormModal({ project, onClose }: { project?: AdminProject; onClos
       setState({ busy: false, error: e instanceof Error ? e.message : 'Failed' })
     }
   }
-  const input = (k: keyof FormState, label: string, opts?: { type?: string; hint?: string; area?: boolean; span?: boolean }) => (
+  const input = (k: Exclude<keyof FormState, 'tge_tbd'>, label: string, opts?: { type?: string; hint?: string; area?: boolean; span?: boolean }) => (
     <div className={opts?.span ? 'sm:col-span-2' : ''}>
       <Field label={label} htmlFor={`pf-${k}`} hint={opts?.hint}>
         {opts?.area ? (
@@ -131,6 +132,10 @@ function ProjectFormModal({ project, onClose }: { project?: AdminProject; onClos
           {input('allocation_info', 'Allocation', { area: true })}
           {input('tge_info', 'TGE information', { area: true })}
           {input('tge_date', 'TGE date (optional)', { type: 'datetime-local' })}
+          <label className="flex cursor-pointer items-center gap-2 self-end pb-2 text-sm font-semibold">
+            <input type="checkbox" className="size-4 accent-[var(--accent)]" checked={f.tge_tbd} onChange={(e) => setF((x) => ({ ...x, tge_tbd: e.target.checked, tge_date: e.target.checked ? '' : x.tge_date }))} />
+            TGE date TBD (to be determined)
+          </label>
           {input('evidence', 'Authorisation evidence', { area: true, span: true })}
           {input('team_wallet', 'Team wallet (empty: your wallet)')}
           {!project && (
@@ -203,7 +208,7 @@ function ProjectDetail({ p, onClose, showBadges }: { p: AdminProject; onClose: (
           <div className="sm:col-span-2"><dt className="label">Ownership / authorisation evidence</dt><dd className="whitespace-pre-wrap">{p.evidence}</dd></div>
           <div><dt className="label">Supply</dt><dd className="whitespace-pre-wrap">{p.supply_info || '–'}</dd></div>
           <div><dt className="label">Allocation</dt><dd className="whitespace-pre-wrap">{p.allocation_info || '–'}</dd></div>
-          <div className="sm:col-span-2"><dt className="label">TGE</dt><dd className="whitespace-pre-wrap">{p.tge_info || '–'} {p.tge_date ? `(${fmtDate(p.tge_date)})` : ''}</dd></div>
+          <div className="sm:col-span-2"><dt className="label">TGE</dt><dd className="whitespace-pre-wrap">{p.tge_info || '–'} {p.tge_date ? `(${fmtDate(p.tge_date)})` : p.tge_tbd ? '(date TBD)' : ''}</dd></div>
         </dl>
         <div>
           <div className="label">History</div>
@@ -338,7 +343,7 @@ export function ApprovedProjects() {
             rows={items.map((p) => [
               <div key="n"><div className="font-semibold">{p.name}</div><div className="mono text-xs text-[var(--subtle)]">{p.token_symbol}</div></div>,
               <BadgeRow key="b" badges={p.badges as never} compact />,
-              fmtDate(p.tge_date),
+              p.tge_date ? fmtDate(p.tge_date) : p.tge_tbd ? 'TBD' : '–',
               <button key="c" className="btn btn-primary !min-h-9" onClick={() => setDraft(p)}>Configure market</button>,
             ])}
           />

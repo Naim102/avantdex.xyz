@@ -41,6 +41,7 @@ function stage(p: Position, nowMs: number): { text: string; tone: 'info' | 'warn
   if (m.status === 'Completed') return { text: 'Completed', tone: 'ok' }
   if (m.status === 'Cancelled') return { text: 'Cancelled: trades are refundable', tone: 'warn' }
   if (m.tge_date) return { text: `TGE ${fmtDay(m.tge_date)}`, tone: 'info' }
+  if (m.tge_tbd) return { text: `TGE date TBD, trading until ${fmtDay(m.trading_end)}`, tone: 'info' }
   return { text: `Trading until ${fmtDay(m.trading_end)}`, tone: 'info' }
 }
 

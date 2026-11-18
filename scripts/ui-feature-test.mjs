@@ -542,16 +542,64 @@ await test('bridge: lists the networks, validates the amount, offers both ways t
   await waitFor(() => b.evaluate(() => /Wait for Circle about 15 to 19 minutes/.test(document.querySelector('dl[aria-label=Summary]')?.innerText.replace(/\s+/g, ' ') ?? '')), 'wait time from Base Sepolia', 8000)
   if (b.errors.length) throw new Error('page errors: ' + b.errors[0])
 })
-await test('mobile: single-row header, menu opens, navigates and closes', async () => {
+await test('mobile: a small one-row header and a bottom navigation bar that navigates, marks the page and never covers the content', async () => {
   const m = await session(ADMIN, 0, 375, 800)
   await m.goto(BASE + '/', { waitUntil: 'networkidle2' })
   await sleep(1200)
-  const h = await m.evaluate(() => ({ rows: document.querySelector('header > div').getBoundingClientRect().height, navs: document.querySelectorAll('header nav:not(#mobile-nav)').length }))
-  if (h.rows > 80) throw new Error('header is taller than one row: ' + h.rows)
-  await m.click('button[aria-label="Open menu"]')
-  await waitFor(() => m.evaluate(() => !!document.querySelector('#mobile-nav')), 'menu open', 5000)
-  await m.click('#mobile-nav a[href="/explore"]')
-  await waitFor(() => m.evaluate(() => location.pathname === '/explore' && !document.querySelector('#mobile-nav')), 'navigated and closed', 5000)
+  const h = await m.evaluate(() => ({ rows: Math.round(document.querySelector('header > div').getBoundingClientRect().height), menu: !!document.querySelector('button[aria-label="Open menu"]'), top: [...document.querySelectorAll('header nav a')].filter((a) => a.offsetParent !== null).length }))
+  if (h.rows > 52) throw new Error('the header is taller than 52px on a phone: ' + h.rows)
+  if (h.menu || h.top) throw new Error('the header must not carry a menu button or links on a phone')
+  const bar = await m.evaluate(() => {
+    const n = document.querySelector('[data-testid=bottom-nav]')
+    const r = n.getBoundingClientRect()
+    return { links: [...n.querySelectorAll('a')].map((a) => a.textContent.trim()), fixedBottom: getComputedStyle(n).position === 'fixed' && Math.round(r.bottom) === window.innerHeight, height: Math.round(r.height) }
+  })
+  if (bar.links.join(',') !== 'Home,Explore,Portfolio,Bridge,List') throw new Error('bottom links: ' + bar.links.join(','))
+  if (!bar.fixedBottom) throw new Error('the bar is not fixed to the bottom of the screen')
+  for (const [label, path] of [['Explore', '/explore'], ['Bridge', '/bridge'], ['Portfolio', '/portfolio'], ['List', '/list'], ['Home', '/']]) {
+    await m.evaluate((l) => [...document.querySelectorAll('[data-testid=bottom-nav] a')].find((a) => a.textContent.trim() === l).click(), label)
+    await waitFor(() => m.evaluate((p) => location.pathname === p, path), 'navigate to ' + path, 8000)
+    await waitFor(() => m.evaluate((l) => [...document.querySelectorAll('[data-testid=bottom-nav] a[aria-current=page]')].map((a) => a.textContent.trim()).join() === l, label), 'active tab ' + label, 5000)
+  }
+  // the end of the page (the footer) must clear the bar
+  await m.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight))
+  await sleep(400)
+  const clear = await m.evaluate(() => document.querySelector('footer').getBoundingClientRect().bottom <= document.querySelector('[data-testid=bottom-nav]').getBoundingClientRect().top + 1)
+  if (!clear) throw new Error('the footer is hidden behind the bottom bar')
+  // wide screens keep the header links and have no bottom bar
+  const wide = await session(ADMIN, 0, 1440, 900)
+  await wide.goto(BASE + '/', { waitUntil: 'networkidle2' })
+  await sleep(800)
+  const d = await wide.evaluate(() => ({ bar: getComputedStyle(document.querySelector('[data-testid=bottom-nav]')).display, links: document.querySelectorAll('header nav a').length }))
+  if (d.bar !== 'none' || d.links < 4) throw new Error('desktop: ' + JSON.stringify(d))
+})
+await test('project application: the TGE date can be marked TBD, which clears and locks the date and is saved', async () => {
+  const t = await session(TRADER)
+  await signIn(t)
+  await t.goto(BASE + '/list/submit', { waitUntil: 'networkidle2' })
+  await waitFor(() => t.evaluate(() => !!document.getElementById('tge_date')), 'tge field', 15000)
+  await t.evaluate(() => { const d = document.getElementById('tge_date'); d.focus() })
+  await t.type('#tge_date', '12312027')
+  if (!(await t.evaluate(() => document.getElementById('tge_date').value))) throw new Error('the date was not typed')
+  await t.evaluate(() => [...document.querySelectorAll('label')].find((l) => /TBD \(to be determined\)/.test(l.innerText)).querySelector('input').click())
+  const locked = await t.evaluate(() => ({ disabled: document.getElementById('tge_date').disabled, value: document.getElementById('tge_date').value }))
+  if (!locked.disabled || locked.value) throw new Error('TBD must clear and lock the date: ' + JSON.stringify(locked))
+  await typeInto(t, '#name', 'TBD Date Project')
+  await typeInto(t, '#token_symbol', 'TBDP')
+  await mustClick(t, /^Save draft$/)
+  await waitFor(async () => {
+    const tok = await t.evaluate(() => Object.keys(sessionStorage).map((k) => sessionStorage.getItem(k)).find((v) => v && v.split('.').length === 3))
+    const r = await fetch(API + '/projects/mine', { headers: { authorization: 'Bearer ' + tok } })
+    const p = (await r.json()).items.find((x) => x.name === 'TBD Date Project')
+    return p && p.tge_tbd === true && p.tge_date === null
+  }, 'saved with tge_tbd', 20000)
+  // editing it again shows the box ticked and the date locked; unticking frees the date
+  await t.goto(BASE + '/list/submit', { waitUntil: 'networkidle2' })
+  await waitFor(() => t.evaluate(() => [...document.querySelectorAll('button')].some((b) => b.textContent.trim() === 'Edit')), 'edit button', 15000)
+  await mustClick(t, /^Edit$/)
+  await waitFor(() => t.evaluate(() => document.getElementById('tge_date')?.disabled === true), 'locked on edit', 8000)
+  await t.evaluate(() => [...document.querySelectorAll('label')].find((l) => /TBD \(to be determined\)/.test(l.innerText)).querySelector('input').click())
+  if (await t.evaluate(() => document.getElementById('tge_date').disabled)) throw new Error('unticking TBD must free the date')
 })
 await test('mobile: home, explore, market, listing, roadmap and bridge have no sideways overflow', async () => {
   const m = await session(ADMIN, 0, 375, 800)

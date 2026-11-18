@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { BadgeRow, Chip } from '@/components/ui'
 import { ProjectLogo } from '@/components/MarketCard'
 import { api, type ProjectPublic } from '@/lib/api'
-import { fmtDay } from '@/lib/format'
+import { tgeDay } from '@/lib/format'
 
 type Upcoming = ProjectPublic & { status: string }
 
@@ -26,7 +26,7 @@ function UpcomingCard({ p }: { p: Upcoming }) {
       <BadgeRow badges={p.badges} compact />
       {p.description && <p className="line-clamp-3 text-pretty text-sm font-medium text-[var(--muted)]">{p.description}</p>}
       <div className="mt-auto flex flex-wrap items-center justify-between gap-2 border-t border-dashed border-[var(--hair)] pt-3 text-sm">
-        <span className="font-bold text-[var(--subtle)]">TGE {fmtDay(p.tge_date)}</span>
+        <span className="font-bold text-[var(--subtle)]">TGE {tgeDay(p.tge_date, p.tge_tbd)}</span>
         <span className="font-bold text-[var(--muted)]">Trading not open yet</span>
       </div>
     </article>

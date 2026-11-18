@@ -11,7 +11,7 @@ import { MyOrdersTable } from '@/components/MyOrders'
 import { BadgeLegend, BadgeRow, EmptyState, Modal, Notice, Skeleton, StatusChip, Tabs } from '@/components/ui'
 import { api, type ApiOrder, type ApiTrade, type Market, type OrderBookData } from '@/lib/api'
 import { useConfig } from '@/hooks/useApp'
-import { addrUrl, fmtDate, fmtDay, shortAddr, timeAgo, txUrl } from '@/lib/format'
+import { addrUrl, fmtDate, shortAddr, tgeDay, timeAgo, txUrl } from '@/lib/format'
 import { fmtLotsAsTokens, fmtPricePerToken, fmtUsdc, lotTokens, pricePerToken } from '@/lib/exchange'
 
 const TABS = ['Order Book', 'Recent Trades', 'About', 'Rules'] as const
@@ -97,7 +97,7 @@ export default function MarketDetail() {
           <Stat label="Total volume" value={`${fmtUsdc(s.volume_total ?? '0')} USDC`} />
           <Stat label="Open interest" value={`${fmtUsdc(s.open_interest ?? '0')} USDC`} />
           <Stat label="Trades" value={String(s.trades ?? 0)} />
-          <Stat label="TGE" value={fmtDay(m.tge_date)} />
+          <Stat label="TGE" value={tgeDay(m.tge_date, m.tge_tbd)} />
         </div>
         <Notice>Badges do not imply investment safety, profitability or guaranteed token delivery. This is unaudited testnet software.</Notice>
       </header>
@@ -157,7 +157,7 @@ export default function MarketDetail() {
                 </div>
                 <div className="sm:col-span-2">
                   <dt className="label">TGE</dt>
-                  <dd className="whitespace-pre-line">{p.tge_info || fmtDay(m.tge_date)}</dd>
+                  <dd className="whitespace-pre-line">{p.tge_info || tgeDay(m.tge_date, m.tge_tbd)}</dd>
                 </div>
               </dl>
               <div className="flex flex-wrap gap-2">

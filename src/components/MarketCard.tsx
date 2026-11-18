@@ -4,7 +4,7 @@ import { DepthBar, ProjectLogo } from '@/components/MarketParts'
 
 export { ProjectLogo }
 import type { Market } from '@/lib/api'
-import { fmtDay, shortAddr } from '@/lib/format'
+import { shortAddr, tgeDay } from '@/lib/format'
 import { fmtPricePerToken, fmtUsdc } from '@/lib/exchange'
 
 function Stat({ label, value, tone }: { label: string; value: string; tone?: 'up' | 'down' }) {
@@ -42,7 +42,7 @@ export function MarketCard({ m }: { m: Market }) {
         <Stat label="Best ask" value={s.best_ask ? fmtPricePerToken(s.best_ask, m) : dash} tone="down" />
         <Stat label="24h volume" value={`${fmtUsdc(s.volume_24h ?? '0')} USDC`} />
         <Stat label="Open interest" value={`${fmtUsdc(s.open_interest ?? '0')} USDC`} />
-        <Stat label="TGE" value={fmtDay(m.tge_date)} />
+        <Stat label="TGE" value={tgeDay(m.tge_date, m.tge_tbd)} />
       </div>
       <div>
         <div className="label">Liquidity, buy side vs sell side (USDC)</div>

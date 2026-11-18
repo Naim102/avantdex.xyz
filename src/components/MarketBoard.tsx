@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 import { StatusChip } from '@/components/ui'
 import { DepthBar, ProjectLogo } from '@/components/MarketParts'
 import type { Market } from '@/lib/api'
-import { fmtDay, shortAddr } from '@/lib/format'
+import { shortAddr, tgeDay } from '@/lib/format'
 import { fmtPricePerToken, fmtUsdc } from '@/lib/exchange'
 
 export const marketKey = (m: Market) => m.slug ?? String(m.onchain_id)
@@ -59,7 +59,7 @@ export function MarketBoard({ markets }: { markets: Market[] }) {
                   <td className="px-3 py-3 text-right"><Num v={fmtUsdc(s.volume_24h ?? '0')} /></td>
                   <td className="px-3 py-3 text-right"><Num v={fmtUsdc(s.open_interest ?? '0')} /></td>
                   <td className="px-3 py-3"><DepthBar bid={s.bid_depth} ask={s.ask_depth} /></td>
-                  <td className="px-3 py-3 whitespace-nowrap text-[var(--muted)]">{fmtDay(m.tge_date)}</td>
+                  <td className="px-3 py-3 whitespace-nowrap text-[var(--muted)]">{tgeDay(m.tge_date, m.tge_tbd)}</td>
                   <td className="px-3 py-3">
                     <div className="flex justify-end gap-2">
                       <Link to={`/market/${key}?side=buy`} className="btn btn-primary !min-h-9 !px-3">Buy</Link>
