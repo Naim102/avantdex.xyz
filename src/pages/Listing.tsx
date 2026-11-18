@@ -26,6 +26,7 @@ export function ListingHub() {
           <p className="text-sm text-[var(--subtle)]">Suggest a project you want to trade. A request never creates a live market: the Avantdex team reviews it first.</p>
         </Link>
       </div>
+      <Notice tone="warn">Arc only: Avantdex lists tokens that are, or will be, deployed on Arc, because trades are settled on Arc in USDC. A token that launches on another chain cannot be listed. See the <Link to="/legal/listing-policy" className="underline">listing policy</Link>.</Notice>
       <Notice>Looking to buy or sell? Open a market and use its Buy / Sell panel. Listing a project is a different thing from placing an order.</Notice>
     </div>
   )
@@ -176,7 +177,7 @@ export function SubmitProject() {
       website: p.website,
       socials: p.socials.join('\n'),
       category: p.category,
-      blockchain: p.blockchain,
+      blockchain: 'Arc', // the only chain Avantdex lists; older applications that named another chain are corrected on save
       token_address: p.token_address,
       supply_info: p.supply_info,
       allocation_info: p.allocation_info,
@@ -246,8 +247,10 @@ export function SubmitProject() {
               </div>
               {area('socials', 'Official social links', 'One https:// link per line (at least one required)', 1000)}
               <div className="grid gap-4 sm:grid-cols-2">
-                {inp('blockchain', 'Blockchain', { max: 60 })}
-                {inp('token_address', 'Token contract address (optional before TGE)', { hint: '0x… on the token’s chain' })}
+                <Field label="Blockchain" htmlFor="blockchain" hint="Avantdex lists only tokens deployed on Arc, because trades are settled on Arc.">
+                  <div id="blockchain" className="field flex items-center font-semibold">Arc</div>
+                </Field>
+                {inp('token_address', 'Token contract address on Arc (optional before TGE)', { hint: '0x… the token’s address on Arc' })}
               </div>
               {area('supply_info', 'Token supply information')}
               {area('allocation_info', 'Allocation information')}
@@ -297,7 +300,7 @@ export function RequestListing() {
   const { data: top } = useQuery({ queryKey: ['request-summary'], queryFn: () => api.get<{ items: { token_symbol: string; requests: number }[] }>('/listing-requests/summary') })
   return (
     <div className="space-y-6">
-      <PageTitle title="Request a Listing" subtitle="Suggest a project you would like to trade. A request never creates a live market; the Avantdex team reviews it first." />
+      <PageTitle title="Request a Listing" subtitle="Suggest a project you would like to trade. A request never creates a live market; the Avantdex team reviews it first. Only tokens deployed on Arc can be listed." />
       <WalletGate needSignIn what="request a listing">
         {state.done ? (
           <div className="space-y-4">

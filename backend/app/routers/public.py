@@ -41,6 +41,12 @@ def config(db: Session = Depends(get_db)) -> dict:
         "notice": notice.value if notice else "",
         "network": "Arc Testnet" if s.chain_id == 5042002 else f"chain {s.chain_id}",
         "audited": False,
+        "circle_wallet": {
+            "enabled": bool(s.circle_client_key.strip()),
+            "client_url": s.circle_client_url.rstrip("/"),
+            "client_key": s.circle_client_key.strip(),
+            "paymaster": s.circle_paymaster,
+        },
     }
 
 

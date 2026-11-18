@@ -75,6 +75,7 @@ export interface AppConfig {
   notice: string
   network: string
   audited: boolean
+  circle_wallet: { enabled: boolean; client_url: string; client_key: string; paymaster: boolean }
 }
 
 export interface Badge {

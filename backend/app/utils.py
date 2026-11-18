@@ -36,6 +36,27 @@ def clean_text(value: str | None, field: str, max_len: int, required: bool = Fal
     return v
 
 
+ARC_NAMES = {"arc", "arc testnet", "arc mainnet", "arc network"}
+
+
+def arc_chain(value: str | None) -> str:
+    """Listing policy: Avantdex lists only tokens that are deployed on Arc, because settlement happens on Arc.
+
+    Returns the canonical name ("Arc") or an empty string when nothing was given (the completeness check reports it).
+    """
+    v = clean_text(value, "Blockchain", 60)
+    if not v:
+        return ""
+    if v.lower() not in ARC_NAMES:
+        raise ApiError(
+            422,
+            "arc_only",
+            "Avantdex lists only tokens that are deployed on Arc, because trades are settled on Arc. "
+            f"\"{v}\" cannot be listed.",
+        )
+    return "Arc"
+
+
 def https_url(value: str | None, field: str, required: bool = False) -> str:
     v = (value or "").strip()
     if not v:

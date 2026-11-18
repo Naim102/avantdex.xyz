@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.orm import Session
 
 from ..db import get_db
@@ -32,7 +32,7 @@ class VerifyIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
     address: str
     nonce: str
-    signature: str
+    signature: str = Field(max_length=16500)  # 65-byte ECDSA, or an ERC-6492 wrapper from a smart wallet (capped again in smart_sig)
 
 
 @router.post("/nonce", dependencies=[Depends(rate_limit("nonce", 30, 60))])

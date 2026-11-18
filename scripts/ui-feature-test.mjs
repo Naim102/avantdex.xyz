@@ -11,6 +11,7 @@
 // project, create + activate a market on-chain, hide/show, on-chain role grant, admin management, seller settlement
 // with fees, and a seller default claimed by the buyer after a chain time jump, plus a phone-width overflow check.
 import puppeteer from 'puppeteer-core'
+import { encodeAbiParameters, keccak256, pad, toHex } from 'viem'
 
 const BASE = 'http://localhost:5173'
 const API = 'http://localhost:8000/api'
@@ -40,6 +41,7 @@ const mock = (acct, offset) => `(() => {
 const browser = await puppeteer.launch({ executablePath: process.env.CHROME ?? 'C:/Program Files/Google/Chrome/Application/chrome.exe', headless: 'new', args: ['--no-sandbox', '--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] })
 const results = []
 async function test(name, fn) {
+  if (process.env.ONLY && !new RegExp(process.env.ONLY, 'i').test(name)) return // ONLY=mobile runs just the matching steps
   try { await fn(); results.push(['PASS', name]); console.log('PASS', name) } catch (e) { results.push(['FAIL', name + ' :: ' + e.message.slice(0, 200)]); console.log('FAIL', name, '::', e.message.slice(0, 200)) }
 }
 
@@ -61,6 +63,8 @@ async function signIn(page) {
   await page.goto(BASE + '/admin', { waitUntil: 'networkidle2' })
   await sleep(1200)
   await mustClick(page, /^Connect Wallet$/)
+  await sleep(1200)
+  await mustClick(page, /^Choose another wallet$/, '[role=dialog] button')
   await sleep(1200)
   await mustClick(page, /^Browser Wallet$/, '[role=dialog] button')
   await sleep(2500)
@@ -380,6 +384,133 @@ await test('settlement: seller defaults, buyer claims payment plus collateral af
   await mustClick(buyer, /^Claim default$/)
   await waitFor(async () => (await get(`/portfolio/${TRADER.toLowerCase()}/trades`)).items.some((t) => t.market_onchain_id === 3 && t.status === 'Defaulted'), 'default recorded', 40000)
 })
+await test('testnet notice: banner, header tag, hero chip and footer say the site runs on Arc Testnet', async () => {
+  await visitor.goto(BASE + '/', { waitUntil: 'networkidle2' })
+  await waitFor(() => visitor.evaluate(() => !!document.querySelector('[data-testid=testnet-banner]')), 'banner', 15000)
+  const t = await visitor.evaluate(() => ({
+    banner: document.querySelector('[data-testid=testnet-banner]').innerText,
+    header: !!document.querySelector('header .chip'),
+    hero: /Live on Arc Testnet/.test(document.body.innerText),
+    footer: /test USDC only/.test(document.querySelector('footer').innerText),
+  }))
+  if (!/Arc Testnet/.test(t.banner) || !/not audited/.test(t.banner)) throw new Error('banner text: ' + t.banner)
+  if (!t.header || !t.hero || !t.footer) throw new Error('missing notice ' + JSON.stringify(t))
+})
+await test('connect dialog recommends Circle Wallet and still opens the wallet list', async () => {
+  await visitor.goto(BASE + '/', { waitUntil: 'networkidle2' })
+  await mustClick(visitor, /^Connect Wallet$/)
+  await waitFor(() => visitor.evaluate(() => /Circle Wallet/.test(document.querySelector('[role=dialog]')?.innerText ?? '') && /Recommended/.test(document.querySelector('[role=dialog]').innerText)), 'recommendation', 8000)
+  if (!(await visitor.evaluate(() => !!document.querySelector('[data-testid=circle-off]')))) throw new Error('without a Client Key the card must say passkey sign-in is not set up')
+  if (await visitor.evaluate(() => !!document.querySelector('[data-testid=circle-on]'))) throw new Error('the passkey buttons must be hidden without a Client Key')
+  await mustClick(visitor, /^Choose another wallet$/, '[role=dialog] button')
+  await waitFor(() => visitor.evaluate(() => /Browser Wallet/.test(document.querySelector('[role=dialog]')?.innerText ?? '')), 'wallet list', 8000)
+  await visitor.keyboard.press('Escape')
+})
+await test('Circle Wallet: with a Client Key the dialog offers passkey sign-in and create, loads the SDK and explains a rejected key', async () => {
+  // the API of this stack has no key, so the config answer is replaced for this page only; the key is a dummy
+  const p = await session('0x0000000000000000000000000000000000000002')
+  const circle = []
+  await p.setRequestInterception(true)
+  p.on('request', async (req) => {
+    const u = req.url()
+    if (u.includes('modular-sdk.circle.com')) circle.push(req.method())
+    if (u.endsWith('/api/config')) {
+      const real = await get('/config')
+      real.circle_wallet = { enabled: true, client_url: 'https://modular-sdk.circle.com/v1/rpc/w3s/buidl', client_key: 'TEST_API_KEY:dummy:dummy', paymaster: true }
+      return req.respond({ status: 200, contentType: 'application/json', body: JSON.stringify(real) })
+    }
+    return req.continue()
+  })
+  await p.goto(BASE + '/', { waitUntil: 'networkidle2' })
+  await sleep(1500)
+  await mustClick(p, /^Connect Wallet$/)
+  await waitFor(() => p.evaluate(() => !!document.querySelector('[data-testid=circle-on]')), 'passkey buttons', 8000)
+  const create = () => p.evaluate(() => [...document.querySelectorAll('[role=dialog] button')].find((b) => b.textContent.trim() === 'Create')?.disabled)
+  if ((await create()) !== true) throw new Error('Create must be disabled until a username is typed')
+  await typeInto(p, '#circle-username', 'ab')
+  if ((await create()) !== true) throw new Error('a 2 letter username must not be accepted')
+  await typeInto(p, '#circle-username', 'tester.one')
+  if ((await create()) !== false) throw new Error('a valid username must enable Create')
+  await mustClick(p, /Sign in with passkey/, '[role=dialog] button')
+  await waitFor(() => p.evaluate(() => /Client Key/.test(document.querySelector('[role=dialog] [role=alert]')?.innerText ?? '')), 'rejected key explained', 30000)
+  if (!circle.includes('POST')) throw new Error('the Circle SDK never contacted Circle')
+  if (!(await p.evaluate(() => /Connect a wallet/.test(document.querySelector('[role=dialog]')?.innerText ?? '')))) throw new Error('the dialog must stay open after an error')
+  if (!(await p.evaluate(() => [...document.querySelectorAll('[role=dialog] button')].some((b) => /Choose another wallet/.test(b.textContent))))) throw new Error('another wallet must stay one click away')
+})
+await test('Circle Wallet: a remembered passkey is retried after a reload (and a failure leaves the visitor signed out)', async () => {
+  const p = await session('0x0000000000000000000000000000000000000003')
+  const circle = []
+  await p.evaluateOnNewDocument(() => localStorage.setItem('avantdex:circle-wallet:v1', JSON.stringify({ id: 'dGVzdC1jcmVkZW50aWFs', publicKey: '0x04' + 'ab'.repeat(64), rpId: location.hostname, username: 'tester.one' })))
+  await p.setRequestInterception(true)
+  p.on('request', async (req) => {
+    const u = req.url()
+    if (u.includes('modular-sdk.circle.com')) circle.push(req.method())
+    if (u.endsWith('/api/config')) {
+      const real = await get('/config')
+      real.circle_wallet = { enabled: true, client_url: 'https://modular-sdk.circle.com/v1/rpc/w3s/buidl', client_key: 'TEST_API_KEY:dummy:dummy', paymaster: true }
+      return req.respond({ status: 200, contentType: 'application/json', body: JSON.stringify(real) })
+    }
+    return req.continue()
+  })
+  await p.goto(BASE + '/', { waitUntil: 'networkidle2' })
+  await waitFor(() => circle.includes('POST'), 'the remembered wallet was retried with Circle', 30000)
+  await sleep(1500)
+  if (!(await p.evaluate(() => [...document.querySelectorAll('header button')].some((b) => /Connect/.test(b.textContent))))) throw new Error('a failed reconnect must leave the visitor signed out')
+  if (p.errors.length) throw new Error('page errors: ' + p.errors[0])
+})
+await test('Arc only: the listing form fixes the blockchain to Arc and the API refuses another chain', async () => {
+  const t = await session(TRADER)
+  await signIn(t)
+  await t.goto(BASE + '/list/submit', { waitUntil: 'networkidle2' })
+  await waitFor(() => t.evaluate(() => /Avantdex lists only tokens deployed on Arc/.test(document.body.innerText)), 'arc only hint', 15000)
+  if (await t.evaluate(() => !!document.querySelector('input#blockchain'))) throw new Error('the blockchain must not be a free text field')
+  const tok = await t.evaluate(() => Object.keys(sessionStorage).map((k) => sessionStorage.getItem(k)).find((v) => v && v.split('.').length === 3))
+  const r = await fetch(API + '/projects', { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + tok }, body: JSON.stringify({ name: 'Elsewhere', token_symbol: 'ELSE', blockchain: 'Ethereum' }) })
+  const body = await r.json()
+  if (r.status !== 422 || body.error.code !== 'arc_only') throw new Error('expected arc_only, got ' + r.status + ' ' + JSON.stringify(body).slice(0, 160))
+  await t.goto(BASE + '/legal/listing-policy', { waitUntil: 'networkidle2' })
+  await waitFor(() => t.evaluate(() => /Arc only\. Avantdex lists only tokens/.test(document.body.innerText)), 'listing policy text', 10000)
+})
+await test('roadmap: seven boxes with their dates on the home page and the roadmap page, linked from the footer', async () => {
+  for (const p of ['/', '/roadmap']) {
+    await visitor.goto(BASE + p, { waitUntil: 'networkidle2' })
+    await sleep(1500)
+    const r = await visitor.evaluate(() => {
+      const ol = document.querySelector('ol[aria-label="Avantdex roadmap"]')
+      const boxes = ol ? [...ol.querySelectorAll('article')] : []
+      return { boxes: boxes.length, text: ol ? ol.innerText : '', done: boxes.filter((b) => /Completed/.test(b.innerText)).length }
+    })
+    if (r.boxes !== 7) throw new Error(p + ' boxes ' + r.boxes)
+    for (const d of ['Completed: November 15, 2026', 'Completed: November 17, 2026', 'Target: February 28, 2027', 'Target: March 31, 2027', 'Target: April 15, 2027', 'Target: April 30, 2027', 'Target: September 30, 2027 and ongoing']) if (!r.text.includes(d)) throw new Error(p + ' missing date ' + d)
+    if (r.done !== 2) throw new Error(p + ' completed boxes ' + r.done)
+  }
+  const open = await visitor.evaluate(() => [...document.querySelectorAll('ol[aria-label="Avantdex roadmap"] details')].every((d) => d.open))
+  if (!open) throw new Error('the roadmap page should show every box expanded')
+  await visitor.goto(BASE + '/', { waitUntil: 'networkidle2' })
+  await visitor.evaluate(() => [...document.querySelectorAll('footer a')].find((a) => a.textContent === 'Roadmap').click())
+  await waitFor(() => visitor.evaluate(() => location.pathname === '/roadmap'), 'footer link', 5000)
+})
+await test('bridge: validates the amount, quotes Circle fees for Arc to another chain, and keeps the wallet on the page', async () => {
+  const USDC = '0x3600000000000000000000000000000000000000'
+  const slot = keccak256(encodeAbiParameters([{ type: 'address' }, { type: 'uint256' }], [ADMIN, 0n])) // OpenZeppelin _balances at slot 0
+  await rpc('anvil_setStorageAt', [USDC, slot, pad(toHex(1_000_000n * 10n ** 6n), { size: 32 })])
+  const b = await session(ADMIN)
+  await signIn(b)
+  await b.goto(BASE + '/bridge', { waitUntil: 'networkidle2' })
+  await waitFor(() => b.evaluate(() => !!document.getElementById('bridge-amount')), 'bridge page', 60000)
+  await b.click('button[aria-label="Swap direction"]')
+  await typeInto(b, '#bridge-amount', '0.5')
+  await waitFor(() => b.evaluate(() => /minimum is 1 USDC/.test(document.body.innerText)), 'minimum message', 8000)
+  await typeInto(b, '#bridge-amount', 'abc')
+  await waitFor(() => b.evaluate(() => /at most 6 decimals/.test(document.body.innerText)), 'format message', 8000)
+  await typeInto(b, '#bridge-amount', '20')
+  await waitFor(() => b.evaluate(() => /Circle fees\s*about [0-9.]+ USDC/.test(document.querySelector('dl[aria-label=Summary]')?.innerText.replace(/\s+/g, ' ') ?? '')), 'fee quote from Circle', 60000)
+  const s = await b.evaluate(() => ({ summary: document.querySelector('dl[aria-label=Summary]').innerText.replace(/\s+/g, ' '), button: [...document.querySelectorAll('main button')].find((x) => /^Withdraw 20 USDC from Arc$/.test(x.textContent.trim()))?.disabled, wrongNetwork: /wrong network/.test(document.body.innerText) }))
+  if (!/You receive on Ethereum Sepolia about [0-9.]+ USDC/.test(s.summary)) throw new Error('summary: ' + s.summary)
+  if (s.button !== false) throw new Error('withdraw button state ' + s.button)
+  if (s.wrongNetwork) throw new Error('the wrong-network banner must not show on the bridge page')
+  if (b.errors.length) throw new Error('page errors: ' + b.errors[0])
+})
 await test('mobile: single-row header, menu opens, navigates and closes', async () => {
   const m = await session(ADMIN, 0, 375, 800)
   await m.goto(BASE + '/', { waitUntil: 'networkidle2' })
@@ -391,10 +522,10 @@ await test('mobile: single-row header, menu opens, navigates and closes', async 
   await m.click('#mobile-nav a[href="/explore"]')
   await waitFor(() => m.evaluate(() => location.pathname === '/explore' && !document.querySelector('#mobile-nav')), 'navigated and closed', 5000)
 })
-await test('mobile: home, explore, market and admin have no sideways overflow', async () => {
+await test('mobile: home, explore, market, listing, roadmap and bridge have no sideways overflow', async () => {
   const m = await session(ADMIN, 0, 375, 800)
-  for (const p of ['/', '/explore', '/market/1', '/list']) {
-    await m.goto(BASE + p, { waitUntil: 'networkidle2' })
+  for (const p of ['/', '/explore', '/market/1', '/list', '/roadmap', '/bridge']) {
+    await m.goto(BASE + p, { waitUntil: 'networkidle2', timeout: 90000 })
     await sleep(1500)
     const over = await m.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
     if (over > 1) throw new Error(`${p} overflows by ${over}px`)

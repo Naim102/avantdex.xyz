@@ -18,7 +18,7 @@ const PAGES: Record<string, { title: string; body: string[] }> = {
     ],
   },
   cookies: { title: 'Cookie Policy', body: ['Avantdex uses no analytics or advertising cookies. A short-lived session token is kept in your browser session storage after you sign in with your wallet.'] },
-  'listing-policy': { title: 'Listing Policy', body: ['Placeholder. Projects are reviewed (approval), checked (verification badges) and activated (market creation) as three separate steps. The criteria must be defined and reviewed by counsel.'] },
+  'listing-policy': { title: 'Listing Policy', body: ['Arc only. Avantdex lists only tokens that are, or will be, deployed on Arc. Trades are settled on Arc in USDC and the seller delivers the token on Arc, so a project whose token launches on another chain cannot be listed, whatever its other merits.', 'Placeholder. Projects are reviewed (approval), checked (verification badges) and activated (market creation) as three separate steps. The criteria must be defined and reviewed by counsel.'] },
   rules: {
     title: 'Trading & Settlement Rules',
     body: [

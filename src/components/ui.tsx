@@ -1,4 +1,5 @@
 import { useEffect, useId, useState, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { motion } from 'framer-motion'
 import { ExternalLink, Info, Loader2, ShieldCheck, TriangleAlert, Check, X } from 'lucide-react'
 import { BADGE_INFO, txUrl, shortAddr } from '@/lib/format'
@@ -6,7 +7,7 @@ import type { Badge } from '@/lib/api'
 import type { TxState } from '@/hooks/useTx'
 import { useAuth } from '@/hooks/useApp'
 import { useAccount } from 'wagmi'
-import { ConnectKitButton } from 'connectkit'
+import { ConnectButton } from '@/components/ConnectButton'
 
 export function Spinner({ label }: { label?: string }) {
   return (
@@ -117,7 +118,8 @@ export function Modal({ open, onClose, title, children }: { open: boolean; onClo
     return () => document.removeEventListener('keydown', onKey)
   }, [open, onClose])
   if (!open) return null
-  return (
+  // Portalled to <body>: a modal opened from the sticky header would otherwise be positioned against the header's blur layer.
+  return createPortal(
     <motion.div
       className="fixed inset-0 z-50 flex items-end justify-center bg-[rgba(20,20,22,0.55)] p-4 backdrop-blur-[2px] sm:items-center"
       role="dialog"
@@ -128,7 +130,7 @@ export function Modal({ open, onClose, title, children }: { open: boolean; onClo
       transition={{ duration: 0.18 }}
       onMouseDown={(e) => e.target === e.currentTarget && onClose()}
     >
-      <motion.div className="glass lift w-full max-w-lg p-5" initial={{ opacity: 0, y: 16, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}>
+      <motion.div className="glass lift max-h-[92dvh] w-full max-w-lg overflow-y-auto p-5" initial={{ opacity: 0, y: 16, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}>
         <div className="mb-3 flex items-center justify-between">
           <h2 className="display text-xl">{title}</h2>
           <button onClick={onClose} aria-label="Close" className="rounded-lg border border-[var(--line)] p-1 transition-colors hover:bg-[var(--tint-2)]">
@@ -137,7 +139,8 @@ export function Modal({ open, onClose, title, children }: { open: boolean; onClo
         </div>
         {children}
       </motion.div>
-    </motion.div>
+    </motion.div>,
+    document.body,
   )
 }
 
@@ -227,15 +230,7 @@ export function WalletGate({ children, needSignIn = false, what = 'continue' }: 
       <EmptyState
         title="Connect your wallet"
         body={`Connect a wallet on Arc Testnet to ${what}.`}
-        action={
-          <ConnectKitButton.Custom>
-            {({ show }) => (
-              <button className="btn btn-primary" onClick={show}>
-                Connect Wallet
-              </button>
-            )}
-          </ConnectKitButton.Custom>
-        }
+        action={<ConnectButton />}
       />
     )
   }

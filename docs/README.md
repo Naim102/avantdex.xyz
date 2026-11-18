@@ -6,9 +6,13 @@
 | [RUNBOOK.md](RUNBOOK.md) | deploying, configuring Coolify, moving to a new contract, demo markets, mainnet checklist, tests |
 | [ADMIN-DASHBOARD.md](ADMIN-DASHBOARD.md) | access model, every admin page, project and market flow, admin API |
 | [SETTLEMENT-AUDIT-AND-PLAN.md](SETTLEMENT-AUDIT-AND-PLAN.md) | audit of tokens, TGE and settlement, and the four-phase plan |
+| [AUDIT-2026-11-ARC-CIRCLE.md](AUDIT-2026-11-ARC-CIRCLE.md) | round 2 full-code audit against the Arc and Circle CCTP documentation, findings and integration options |
 | [OPERATIONS-PHASE-1.md](OPERATIONS-PHASE-1.md) | Phase 1: token pre-flight, market draft form, Needs attention, reminders, webhook, pause |
 | [KEEPER.md](KEEPER.md) | Phase 2: the keeper worker, safeguards, setup, monitoring |
 | [CONTRACT-V2.md](CONTRACT-V2.md) | Phase 3: contract v2 changes, ABI, tests, deployment record |
+| [CCTP.md](CCTP.md) | the Bridge page: add USDC to Arc and withdraw with Circle CCTP V2, decisions, contracts, limits |
+| [ROADMAP.md](ROADMAP.md) | the public roadmap page and Home block, and where the site says it runs on Arc Testnet |
+| [CIRCLE-WALLET.md](CIRCLE-WALLET.md) | Circle Wallet passkey sign-in: setup with Circle Console, how it works, limits, acceptance checklist |
 | [PORTFOLIO.md](PORTFOLIO.md) | the Portfolio overview: token allocation per market, what is guaranteed, the positions API |
 | [INDEXER.md](INDEXER.md) | how the chain is mirrored, binding markets, switching contracts |
 | [DESIGN.md](DESIGN.md) | themes, look, motion, home page, responsive rules |

@@ -63,6 +63,13 @@ Two themes, Sky (light, the default) and Ink (dark), picked from the Theme menu 
 
 The home page has a 3D hero (the brand pyramid, built with three.js; it turns and pulls apart as you scroll), a liquidity landscape (one pair of towers per market, buy side green and sell side red, drawn from live order data), a scroll-driven "life of a trade" walkthrough, a latest-trades feed and a product FAQ. three.js loads in its own chunk and renders on demand. Everything respects `prefers-reduced-motion` and has a text alternative.
 
+## Wallets, bridge, roadmap
+
+* **Circle Wallet passkey sign-in** (a smart account on Arc, no seed phrase, optional gas sponsorship): turned on by setting `CIRCLE_CLIENT_KEY` on the API, see [docs/CIRCLE-WALLET.md](docs/CIRCLE-WALLET.md). Any other wallet still works.
+* **Bridge** (`/bridge`): add USDC to Arc or withdraw it with Circle CCTP V2 and the Forwarding Service, testnet only, see [docs/CCTP.md](docs/CCTP.md).
+* **Roadmap** (`/roadmap`, and at the bottom of the home page): [docs/ROADMAP.md](docs/ROADMAP.md). The site states on every page that it runs on Arc Testnet.
+* **Listing policy:** only tokens deployed on Arc can be listed, because trades settle on Arc.
+
 ## Product tour
 
 `docs/Avantdex-product-tour.pptx` is a slide deck of every page, built from the screenshots in `docs/screenshots/` (captured from the local dev stack with demo data). `python scripts/build_deck.py` rebuilds the deck.
@@ -72,6 +79,7 @@ The home page has a 3D hero (the brand pyramid, built with three.js; it turns an
 ```bash
 docker run --rm -v "$PWD:/app" -w /app --entrypoint forge ghcr.io/foundry-rs/foundry:v1.7.1 test   # contracts
 bun run check                                                                                       # lint + typecheck
+node scripts/test-circle-provider.mjs                                                               # Circle Wallet provider logic
 ```
 
 Backend tests (PostgreSQL + a local chain), see [docs/RUNBOOK.md](docs/RUNBOOK.md#tests).

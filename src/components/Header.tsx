@@ -2,7 +2,9 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useAccount, useDisconnect, useSwitchChain } from 'wagmi'
+import { CIRCLE_CONNECTOR_ID } from '@/lib/circleWallet'
 import { ConnectKitButton } from 'connectkit'
+import { ConnectButton } from '@/components/ConnectButton'
 import { useQuery } from '@tanstack/react-query'
 import { Bell, ChevronDown, Copy, ExternalLink, LogOut, Menu, TriangleAlert, X } from 'lucide-react'
 import { toast } from 'sonner'
@@ -16,6 +18,7 @@ const NAV = [
   { to: '/', label: 'Home', end: true },
   { to: '/explore', label: 'Explore', end: false },
   { to: '/portfolio', label: 'Portfolio', end: false },
+  { to: '/bridge', label: 'Bridge', end: false },
   { to: '/list', label: 'Create Listing', end: false },
 ]
 
@@ -36,6 +39,8 @@ function AccountMenu({ address }: { address: string }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const { disconnect } = useDisconnect()
+  const { connector } = useAccount()
+  const isCircle = connector?.id === CIRCLE_CONNECTOR_ID
   const auth = useAuth()
   const { balance } = useUsdc()
 
@@ -67,6 +72,7 @@ function AccountMenu({ address }: { address: string }) {
           <div className="px-3 py-2">
             <div className="label !mb-1">Connected</div>
             <div className="mono break-all text-xs">{address}</div>
+            {isCircle && <div className="mt-1 text-xs font-medium text-[var(--muted)]">Circle Wallet, a smart account on Arc. Send test USDC to this address to trade.</div>}
             {auth.roles.length > 0 && <div className="mt-1 text-xs font-bold text-[var(--accent-text)]">Admin</div>}
           </div>
           <div className="my-1 h-0.5 bg-[var(--hair)]" />
@@ -181,12 +187,14 @@ function MobileMenu() {
 }
 
 export function Header() {
+  const { data: cfg } = useConfig()
   return (
     <header className="sticky top-0 z-30 border-b border-[var(--line)] bg-[color-mix(in_srgb,var(--bg)_88%,transparent)] backdrop-blur-md">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-3 py-3 sm:gap-3 sm:px-4">
         <Link to="/" className="flex items-center gap-2.5" aria-label="Avantdex home">
           <Logo className="size-9 sm:size-10" />
           <span className="display text-lg max-[359px]:hidden sm:text-xl">Avantdex</span>
+          {cfg?.chain_id === 5042002 && <span className="chip hidden sm:inline-flex" title="Running on Arc Testnet, test USDC only">Testnet</span>}
         </Link>
         <nav className="hidden gap-1 lg:flex" aria-label="Main">
           {NAV.map((n) => (
@@ -198,13 +206,13 @@ export function Header() {
         <div className="flex items-center gap-1.5 sm:gap-2">
           <NotificationBell />
           <ConnectKitButton.Custom>
-            {({ isConnected, show, address }) =>
+            {({ isConnected, address }) =>
               isConnected && address ? (
                 <AccountMenu address={address} />
               ) : (
-                <button className="btn btn-primary !px-3.5 sm:!px-5" onClick={show}>
+                <ConnectButton className="btn btn-primary !px-3.5 sm:!px-5">
                   Connect<span className="hidden sm:inline">&nbsp;Wallet</span>
-                </button>
+                </ConnectButton>
               )
             }
           </ConnectKitButton.Custom>
@@ -219,6 +227,7 @@ export function NetworkBanner() {
   const { isConnected, chainId } = useAccount()
   const { switchChain, isPending } = useSwitchChain()
   const { data: cfg, isError } = useConfig()
+  const onBridge = useLocation().pathname.startsWith('/bridge') // the bridge asks the wallet to use other networks on purpose
   const bar = 'border-b border-[var(--line)] px-4 py-2 text-center text-sm font-bold'
   if (isError) {
     return (
@@ -229,8 +238,17 @@ export function NetworkBanner() {
   }
   return (
     <>
+      {cfg && cfg.chain_id === 5042002 && (
+        <div className="border-b border-[var(--line)] bg-[var(--surface)] px-3 py-1.5 text-center text-xs font-bold text-[var(--ink)] sm:px-4 sm:py-2 sm:text-sm" role="note" data-testid="testnet-banner">
+          <span className="chip mr-2 align-middle" style={{ background: 'var(--accent)', color: 'var(--accent-ink)' }}>Testnet</span>
+          <span className="align-middle font-semibold">
+            Avantdex is live on Arc Testnet (chain {cfg.chain_id}). Trades use test USDC with no real value and the contract is not audited.{' '}
+            <a className="underline" href="https://faucet.circle.com" target="_blank" rel="noopener noreferrer">Get test USDC</a>
+          </span>
+        </div>
+      )}
       {cfg?.notice && <div className={`${bar} bg-[var(--accent)] text-[var(--accent-ink)]`}>{cfg.notice}</div>}
-      {isConnected && chainId !== CHAIN_ID && (
+      {isConnected && chainId !== CHAIN_ID && !onBridge && (
         <div className={`${bar} flex flex-wrap items-center justify-center gap-3 bg-[var(--warn-bg)] text-[var(--warn)]`} role="alert">
           <TriangleAlert className="size-4" /> Your wallet is on the wrong network. Avantdex runs on Arc Testnet.
           <button className="underline" disabled={isPending} onClick={() => switchChain({ chainId: CHAIN_ID })}>

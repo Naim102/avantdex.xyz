@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { Suspense, lazy, useEffect } from 'react'
 import { motion, useReducedMotion, useScroll, useSpring } from 'framer-motion'
 import { BrowserRouter, Link, Route, Routes, useLocation } from 'react-router-dom'
 import { Header, NetworkBanner } from '@/components/Header'
@@ -7,14 +7,18 @@ import Explore from '@/pages/Explore'
 import MarketDetail from '@/pages/MarketDetail'
 import Portfolio from '@/pages/Portfolio'
 import Legal from '@/pages/Legal'
+import RoadmapPage from '@/pages/RoadmapPage'
 import { ListingHub, RequestListing, SubmitProject } from '@/pages/Listing'
 import AdminLayout from '@/pages/admin/AdminLayout'
 import { ApprovedProjects, Applications, Verification } from '@/pages/admin/Projects'
 import { LiveMarkets, MarketManagement, SettlementManagement } from '@/pages/admin/Markets'
 import { AuditLogs, Disputes, Overview, Roles, SettingsPage, Users } from '@/pages/admin/Misc'
-import { EmptyState } from '@/components/ui'
+import { EmptyState, Spinner } from '@/components/ui'
 import { Footer } from '@/components/Footer'
 import { CursorFx } from '@/components/CursorFx'
+
+// Circle's Bridge Kit is large: it is only downloaded when someone opens the bridge page.
+const Bridge = lazy(() => import('@/pages/Bridge'))
 
 function ScrollTop() {
   const { pathname } = useLocation()
@@ -65,6 +69,8 @@ export default function App() {
             <Route path="/list/submit" element={<SubmitProject />} />
             <Route path="/list/request" element={<RequestListing />} />
             <Route path="/legal/:page" element={<Legal />} />
+            <Route path="/roadmap" element={<RoadmapPage />} />
+            <Route path="/bridge" element={<Suspense fallback={<div className="py-16 text-center"><Spinner label="Loading the bridge…" /></div>}><Bridge /></Suspense>} />
             <Route path="/admin" element={<AdminLayout />}>
               <Route index element={<Overview />} />
               <Route path="applications" element={<Applications />} />

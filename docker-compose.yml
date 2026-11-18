@@ -54,6 +54,9 @@ services:
       BOOTSTRAP_ADMIN_ADDRESSES: ${BOOTSTRAP_ADMIN_ADDRESSES:-}
       ADMIN_ROLES: ${ADMIN_ROLES:-}
       REQUIRE_TWO_PERSON_APPROVAL: ${REQUIRE_TWO_PERSON_APPROVAL:-false}
+      CIRCLE_CLIENT_KEY: ${CIRCLE_CLIENT_KEY:-}
+      CIRCLE_CLIENT_URL: ${CIRCLE_CLIENT_URL:-https://modular-sdk.circle.com/v1/rpc/w3s/buidl}
+      CIRCLE_PAYMASTER: ${CIRCLE_PAYMASTER:-true}
     expose:
       - "8000"
     healthcheck:

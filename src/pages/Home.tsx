@@ -8,6 +8,7 @@ import { MarketBoard } from '@/components/MarketBoard'
 import { Reveal } from '@/components/Reveal'
 import { EmptyState, Skeleton } from '@/components/ui'
 import { UpcomingSection } from '@/components/UpcomingSection'
+import { RoadmapSection } from '@/components/Roadmap'
 import { FaqSection, HeroPyramid, LifecycleSection, LiquiditySection } from '@/components/HomeSections'
 import { useConfig } from '@/hooks/useApp'
 import { api, type Market, type PlatformStats } from '@/lib/api'
@@ -187,6 +188,7 @@ export default function Home() {
   const navigate = useNavigate()
   const reduce = useReducedMotion()
   const [q, setQ] = useState('')
+  const { data: cfg } = useConfig()
   const { data, isLoading, isError } = useQuery({ queryKey: ['markets', 'home'], queryFn: () => api.get<{ items: Market[] }>('/markets?tab=trending'), refetchInterval: 15000 })
   const all = data?.items ?? []
   const markets = all.slice(0, 8)
@@ -196,6 +198,12 @@ export default function Home() {
     <div className="space-y-20 sm:space-y-28">
       <section className="grid items-center gap-10 pt-2 lg:grid-cols-[1.05fr_1fr] lg:gap-6 lg:pt-6">
         <div className="space-y-7">
+          {cfg?.chain_id === 5042002 && (
+            <motion.p {...rise(0)} className="chip !px-3 !py-1 !text-xs">
+              <span className="size-2 rounded-full bg-[var(--accent)]" aria-hidden="true" />
+              Live on Arc Testnet, test USDC only
+            </motion.p>
+          )}
           <motion.h1 {...rise(0)} className="display text-balance text-[2.6rem] leading-[1.02] sm:text-6xl">
             Trade tokens <span className="text-[var(--accent-text)]">before they launch</span>
           </motion.h1>
@@ -271,6 +279,8 @@ export default function Home() {
       <OwnerSection />
 
       <FaqSection />
+
+      <RoadmapSection />
     </div>
   )
 }

@@ -66,6 +66,20 @@ def issue_nonce(db: Session, address: str) -> AuthNonce:
     return row
 
 
+def _smart_wallet_signed(address: str, text: str, signature: str) -> bool:
+    """A smart-contract wallet (for example a Circle Wallet) signs through ERC-1271 / ERC-6492 instead of ECDSA."""
+    from eth_account.messages import defunct_hash_message
+
+    from .chain import get_web3
+    from .smart_sig import is_valid_contract_signature
+
+    try:
+        raw = bytes.fromhex(signature.removeprefix("0x"))
+    except ValueError:
+        return False
+    return is_valid_contract_signature(get_web3(), address, bytes(defunct_hash_message(text=text)), raw)
+
+
 def verify_signature(db: Session, address: str, nonce: str, signature: str) -> None:
     row = db.get(AuthNonce, nonce)
     if row is None or row.address != address:
@@ -74,11 +88,13 @@ def verify_signature(db: Session, address: str, nonce: str, signature: str) -> N
         raise ApiError(401, "nonce_used", "This nonce was already used")
     if row.expires_at < utcnow():
         raise ApiError(401, "nonce_expired", "This nonce has expired")
+    message = encode_defunct(text=row.message)
+    recovered = ""
     try:
-        recovered = Account.recover_message(encode_defunct(text=row.message), signature=signature)
-    except Exception as exc:  # malformed signature
-        raise ApiError(401, "bad_signature", "Invalid signature") from exc
-    if recovered.lower() != address:
+        recovered = Account.recover_message(message, signature=signature).lower()
+    except Exception:  # not a 65-byte ECDSA signature: may still be a smart-wallet signature
+        pass
+    if recovered != address and not _smart_wallet_signed(address, row.message, signature):
         raise ApiError(401, "bad_signature", "Signature does not match the address")
     row.used = True  # single use, even on later failures
     db.commit()

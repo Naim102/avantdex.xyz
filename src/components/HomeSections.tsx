@@ -255,6 +255,7 @@ const FAQ: [string, string][] = [
   ['When are fees charged?', 'Only when a trade settles: 0.5% from the buyer and 0.5% from the seller, in USDC. Cancelling, listing a project, requesting a listing, a default or a refund costs no platform fee.'],
   ['What if the token never launches?', 'A manager can cancel the market and every trade becomes refundable, with no fee. If a market is never settled, anyone can refund its trades 90 days after trading ended.'],
   ['What are lots and ticks?', 'A lot is the smallest quantity you can trade and a tick is the smallest price step. Both are fixed when the market is created and shown on the market page under Rules.'],
+  ['Which tokens can be listed?', 'Only tokens that are, or will be, deployed on Arc. Trades are settled on Arc in USDC, and the seller delivers the token on Arc, so a token that launches on another chain cannot be settled here.'],
   ['Does a verified badge mean a project is safe?', 'No. A badge describes one specific check, such as that the contract address was confirmed through an official channel. It says nothing about safety, profit or delivery.'],
   ['Is this audited, and is it real money?', 'No. Avantdex runs on Arc Testnet, which uses test USDC. The contract has not been audited, so do not use it with value you cannot lose.'],
 ]

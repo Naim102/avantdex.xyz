@@ -381,3 +381,18 @@ def test_admin_with_every_legacy_role_row_can_approve_and_grant_badges(client):
     assert client.post(f"/api/admin/projects/{pid}/badges", headers=h, json={"badge": "verified_project", "evidence": "checked"}).status_code == 200
     with SessionLocal() as db:
         assert {a.role for a in db.scalars(select(AuditLog))} == {"super_admin"}
+
+
+def test_only_tokens_on_arc_can_be_listed(client):
+    """Settlement happens on Arc, so a project whose token lives on another chain is refused with a clear reason."""
+    w = team()
+    h = login(client, w)
+    for chain in ("Ethereum", "Solana", "Base", "Arc-like"):
+        r = create(client, h, w, blockchain=chain)
+        assert r.status_code == 422, (chain, r.text)
+        assert r.json()["error"]["code"] == "arc_only"
+        assert "deployed on Arc" in r.json()["error"]["message"]
+    for label in ("Arc", "arc testnet", "ARC NETWORK"):
+        r = create(client, h, w, blockchain=label)
+        assert r.status_code == 200, (label, r.text)
+        assert r.json()["blockchain"] == "Arc"  # stored in one canonical form

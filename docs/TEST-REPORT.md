@@ -1,12 +1,16 @@
 # Test report
 
-Run on 2026-11-10 against the local dev stack (anvil with Arc Testnet's chain id, PostgreSQL, API, indexer). Nothing here touched a real network.
+Run on 2026-11-10 and again on 2026-11-18 against the local dev stack (anvil with Arc Testnet's chain id, PostgreSQL, API, indexer). Nothing here touched a real network.
 
 | Suite | Result |
 |---|---|
 | Contracts v2 (`forge test`, unit, fuzz and invariants) | 112 passed |
-| Backend (`pytest`, includes chain integration, the keeper, the v2 contract and the portfolio positions endpoint) | 76 passed |
-| UI feature test (`scripts/ui-feature-test.mjs`, headless Chrome), final run on a fresh stack, includes the attention list, token pre-flight, draft edit/discard, pause and the portfolio token allocation | 25 of 25 passed |
+| Backend (`pytest`, includes chain integration, the keeper, the v2 contract, the portfolio positions endpoint, smart-wallet sign-in, the Circle config and the Arc-only rule) | 86 passed |
+| UI feature test (`scripts/ui-feature-test.mjs`, headless Chrome), final run on a fresh stack, includes the attention list, token pre-flight, draft edit/discard, pause, the portfolio token allocation, and (2026-11-18) the testnet notice, the Circle Wallet connect dialog, the roadmap and the bridge | 32 steps, all passed (the full run on a fresh stack had 31 first time; the phone-width overflow step hit a 30 s navigation timeout under load and passed on rerun with a 90 s timeout) |
+| Circle provider unit test (`node scripts/test-circle-provider.mjs`, fake smart account and bundler) | 12 passed |
+| Smart-wallet sign-in (`backend/tests/test_smart_wallet.py`, real ERC-1271 and ERC-6492 accounts on a local chain), Circle config, Arc-only listing rule | 7 + 1 + 1 passed |
+| nginx visitor address (spoofed `X-Forwarded-For` through the real `nginx.conf`) | real address passed on |
+| CCTP contract check (`node scripts/verify-cctp.mjs`, read-only, public RPC) | OK on Arc Testnet, Ethereum Sepolia, Base Sepolia |
 | Contract v2 on Arc Testnet (`0xb489…0283`): roles, fee constants, runtime code vs local build, and the production compose stack indexing it with lag 0 | verified |
 | Typecheck (`tsc`) and lint (`oxlint --type-aware`) | clean |
 
@@ -20,8 +24,12 @@ Run on 2026-11-10 against the local dev stack (anvil with Arc Testnet's chain id
 
 **Settlement:** open settlement on a market, the seller approves the token and settles, the trade shows Settled and the fee collector total rises; on another market the seller does not deliver, the chain clock is moved past the deadline, and the buyer claims the default (status Defaulted).
 
-**Phone width (375 px):** single-row header with a menu that opens, navigates and closes;  home, explore, market and listing pages have no sideways overflow.
+**Circle Wallet and Arc only (2026-11-18):** without a Client Key the card says passkey sign-in is not set up and hides the buttons; with a (dummy) key it shows Sign in with passkey and Create (Create stays disabled until a valid username), loads the Circle SDK, contacts Circle and explains the rejected key in plain words, and the dialog stays open with another wallet one click away; a remembered passkey record is retried after a reload and a failure leaves the visitor signed out; the listing form shows Arc as a fixed value, the API answers `arc_only` for another chain, and the listing policy page says so.
+
+**Site additions (2026-11-18):** the testnet banner, header tag, hero chip and footer line; the connect dialog shows the Circle Wallet recommendation and still reaches the wallet list; the roadmap has seven boxes with the right dates and two completed, on Home and on `/roadmap`, expanded on the page, linked from the footer; the bridge validates the amount (minimum, number format), shows a live Circle fee quote for Arc to Ethereum Sepolia, enables the button, and keeps the wrong-network banner hidden.
+
+**Phone width (375 px):** single-row header with a menu that opens, navigates and closes;  home, explore, market, listing, roadmap and bridge pages have no sideways overflow.
 
 ## Not covered
 
-Real-network behaviour (the same flows were run on Arc Testnet earlier with `scripts/testnet_e2e.py`), mobile wallets, and a cold start of the production Docker images on Coolify.
+The CCTP burn and mint transactions (they need public-testnet funds; see [CCTP.md](CCTP.md)), a real Circle passkey registration and login (needs the operator's Client Key and the registered Passkey Domain; acceptance checklist in [CIRCLE-WALLET.md](CIRCLE-WALLET.md)), real-network behaviour (the same flows were run on Arc Testnet earlier with `scripts/testnet_e2e.py`), mobile wallets, and a cold start of the production Docker images on Coolify.

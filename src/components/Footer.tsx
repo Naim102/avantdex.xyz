@@ -11,6 +11,8 @@ const TRADE: [string, string][] = [
   ['/list', 'Create listing'],
   ['/list/submit', 'Submit a project'],
   ['/list/request', 'Request a listing'],
+  ['/bridge', 'Bridge USDC'],
+  ['/roadmap', 'Roadmap'],
 ]
 const LEGAL: [string, string][] = [
   ['terms', 'Terms'],
@@ -67,7 +69,7 @@ export function Footer() {
           <dl className="space-y-2 text-sm">
             <div>
               <dt className="text-xs font-bold text-[var(--muted)]">Network</dt>
-              <dd className="font-medium">{cfg?.network ?? 'Arc Testnet'}</dd>
+              <dd className="font-medium">{cfg?.network ?? 'Arc Testnet'}{(cfg?.chain_id ?? 5042002) === 5042002 && ', test USDC only'}</dd>
             </div>
             {cfg && (
               <>

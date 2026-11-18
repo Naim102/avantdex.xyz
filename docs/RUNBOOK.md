@@ -45,6 +45,10 @@ After changing frontend code: `bun run build:static`, commit `deploy/dist`, rede
 
 The indexer now handles the switch itself: when `EXCHANGE_ADDRESS` changes on the same chain it deletes what it indexed from the old contract (events, orders, trades, markets, disputes; projects, badges, admins and audit logs stay, and projects tied to an old market go back to Approved) and re-indexes from `EXCHANGE_DEPLOY_BLOCK`. A different chain id still needs a fresh database. A new `AvantdexExchange` has a new address and its own empty state. To switch an existing server: (1) deploy with `ADMIN_ADDRESS=<your dashboard admin wallet> ./scripts/deploy-testnet.sh`; (2) set `EXCHANGE_ADDRESS` and `EXCHANGE_DEPLOY_BLOCK` from the output in Coolify; (3) point `DATABASE_URL` at a **new, empty database** (or drop the old one: the indexer refuses a database that indexed a different contract); (4) redeploy and open `/api/health` until it reports `"status":"ok"`. Projects, badges and audit logs live only in PostgreSQL, so a new database starts without them: re-add projects from Admin -> Applications -> Add a project. The latest deployment is recorded in `deployments/arc-testnet.json`, the previous one in `deployments/arc-testnet-previous.json`.
 
+## Circle Wallet credentials (passkey sign-in)
+
+Set `CIRCLE_CLIENT_KEY` (and optionally `CIRCLE_PAYMASTER`) on the API service, register your domain as the Passkey Domain in Circle Console, redeploy, and check `GET /api/config` for `circle_wallet.enabled: true`. Step by step and an acceptance checklist: [CIRCLE-WALLET.md](CIRCLE-WALLET.md). The key is public by design (it is shown to browsers); a `TEST_API_KEY:` key is for Arc Testnet, a `LIVE_API_KEY:` key for mainnet.
+
 ## Admin controls (super admin)
 
 Every admin wallet has every control in `/admin`: Applications (approve, reject, **Add a project**, **Edit**, **Delete** a project that has no market on-chain), Verification badges, Approved projects, market drafts, **Hide from site / Show on site** for a market (off-chain visibility only; orders, settlement and refunds are untouched), settlement, disputes, users, admins, audit logs and settings. The only things an admin cannot do are the on-chain ones that need a role on the contract: creating, activating, suspending and settling a market needs `MARKET_MANAGER` on the signing wallet, and changing the fee collector needs `DEFAULT_ADMIN`. Grant the first from **Admin -> Admins -> On-chain access** while connected as the contract admin.
@@ -111,6 +115,17 @@ docker run --rm -v "$PWD:/app" -v "$PWD/../contracts/out:/out:ro" -w /app \
   avantdex-backend-dev python -m pytest tests -q
 ```
 
+Frontend units and the whole UI (no browser needed for the first):
+
+```bash
+node scripts/test-circle-provider.mjs        # Circle Wallet provider logic with fake accounts
+node scripts/verify-cctp.mjs                 # read-only check of the CCTP contracts on public testnets
+docker compose -f docker-compose.dev.yml up -d --build   # chain + db + api + indexer, then seed (scripts/seed_demo_markets.py)
+node scripts/ui-feature-test.mjs <DEMO_TOKEN_ADDRESS>    # headless Chrome, see the file header
+```
+
+Run containers that talk to each other on one Docker network (`--network ...`) rather than through `host.docker.internal`: on a machine that also runs another local chain on port 8545 the host name can reach the wrong one.
+
 ## Operations: attention list, reminders, webhook
 
 * **Admin -> Overview -> Needs attention** lists what a person should do now: a TGE date has passed and settlement is not open (act now), trading ended without settlement, a settlement deadline is within 24 hours, a deadline passed with trades still open, a market ready to complete, a market created on-chain but not activated, a stalled indexer, applications waiting.
@@ -129,6 +144,10 @@ A small worker (`keeper` service in the compose files) that does the on-chain ch
 3. Watch **Admin -> Settings -> Keeper** (wallet, gas balance, last pass, recent actions). The overview warns when the keeper is low on gas, failing or silent for 10 minutes. Every action is in the audit log with role `keeper`.
 
 What it will never do: cancel or suspend a market, open or extend settlement, pause, or touch roles and fees. `KEEPER_COMPLETE_MARKETS=true` additionally calls `completeMarket` once every trade is closed; that needs `MARKET_MANAGER` on the keeper wallet, so leave it off unless you accept a hot key with that role. Due work is judged by the chain's clock, each pass is limited to `KEEPER_MAX_TX_PER_RUN` transactions, and a transaction that would revert is skipped before it costs gas.
+
+## Visitor addresses and rate limits
+
+`nginx.conf` trusts only private network hops in `X-Forwarded-For` (`set_real_ip_from`, `real_ip_recursive on`) and passes one address to the API, so a visitor cannot pick their own address by sending the header (this was audit finding M-1). If your proxy is not on a private network range, add its range to `set_real_ip_from`.
 
 ## Operations notes
 

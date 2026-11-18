@@ -17,7 +17,7 @@ Buyer 0.5% and seller 0.5% on **settled** trades only; 0% for order cancellation
 - Contracts: Solidity 0.8.28, OpenZeppelin 5, Foundry (`contracts/AvantdexExchange.sol`, tests in `contracts/test/Avantdex.t.sol`).
 - Backend: Python 3.12, FastAPI, SQLAlchemy 2, Alembic, PostgreSQL 16, web3.py indexer (`backend/`).
 - Frontend: React 18, Vite, TypeScript, Tailwind, wagmi v2, viem, ConnectKit (`src/`). Runtime config comes from `/api/config` (no rebuild needed to change addresses).
-- Chain: Arc Testnet 5042002, RPC `https://rpc.testnet.arc.io`. USDC ERC-20 `0x3600000000000000000000000000000000000000`, 6 decimals. Mainnet (5042) is deliberately not configured.
+- Chain: Arc Testnet 5042002, RPC `https://rpc.testnet.arc.io`. USDC ERC-20 `0x3600000000000000000000000000000000000000`, 6 decimals. Arc mainnet (5042) exists but is deliberately not configured here. The site says it runs on Arc Testnet (banner, header tag, hero chip, footer), driven by the API's chain id.
 
 ## Deployed (Arc Testnet, chain 5042002)
 
@@ -39,6 +39,7 @@ Themes live in `src/index.css` (`data-theme` on `<html>`: sky, the default, and 
 - No role can withdraw or redirect escrowed funds. Users always keep cancel / settle / default claim / refund paths. Pause blocks only new orders.
 - USDC on Arc reverts for blocklisted accounts: every payout is push-with-fallback to `claimable`.
 - The chain is canonical. The indexer copies events and re-reads touched state from the contract; the DB must be rebuildable by replay.
+- **Arc only listing policy:** only tokens deployed on Arc can be listed (`arc_chain` in `backend/app/utils.py`); settlement happens on Arc.
 - Create Listing (project listing/request) is **not** Create Order. Approval, verification and market activation are three separate steps.
 - Never present an off-chain order as guaranteed; never invent market data; never claim the contract is audited.
 - `maxFeePerGas` must be at least 20 gwei on Arc. Never assume strictly increasing `block.timestamp`.
@@ -48,7 +49,8 @@ Themes live in `src/index.css` (`data-theme` on `<html>`: sky, the default, and 
 
 - `contracts/AvantdexExchange.sol`; legacy v1 `contracts/AllocX*.sol` and `contracts/legacy/` (not used by Avantdex).
 - `backend/app/routers/` (public, auth, user, admin), `backend/app/indexer/worker.py`, `backend/app/models.py`, `backend/alembic/`.
-- `src/pages/` (Home, Explore, MarketDetail, Portfolio, Listing, admin/*), `src/components/TradePanel.tsx`, `src/lib/exchange.ts` (units and contract errors).
+- `src/pages/` (Home, Explore, MarketDetail, Portfolio, Listing, Bridge, RoadmapPage, admin/*), `src/components/TradePanel.tsx`, `src/lib/exchange.ts` (units and contract errors).
+- Bridge (`/bridge`, Circle CCTP V2 through `@circle-fin/bridge-kit`, testnet only, lazy chunk): `src/pages/Bridge.tsx`, `src/lib/bridge.ts`, [docs/CCTP.md](docs/CCTP.md). Roadmap copy and dates live only in `src/lib/roadmap.ts` ([docs/ROADMAP.md](docs/ROADMAP.md)). Every Connect Wallet button opens a dialog with Circle Wallet passkey sign-in first (`src/components/ConnectButton.tsx`, `src/lib/circleWallet.ts`, `backend/app/smart_sig.py`; turned on by `CIRCLE_CLIENT_KEY` on the API; [docs/CIRCLE-WALLET.md](docs/CIRCLE-WALLET.md)). The wallet is a smart account, so sign-in verifies ERC-1271 / ERC-6492 signatures as well as ECDSA.
 - `docs/README.md` indexes all documentation (admin dashboard, Phase 1 operations, keeper, contract v2, indexer, design).
 - `docker-compose.yml` (production / Coolify), `docker-compose.dev.yml` (local), `scripts/deploy-testnet.sh`, `docs/RUNBOOK.md`.
 

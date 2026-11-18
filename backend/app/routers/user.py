@@ -14,6 +14,7 @@ from ..models import Dispute, ListingRequest, Notification, Project, ProjectStat
 from ..security import ApiError, Session_, current_user, rate_limit
 from ..utils import (
     CATEGORIES,
+    arc_chain,
     clean_text,
     evm_address,
     https_url,
@@ -61,7 +62,7 @@ def _apply(p: Project, body: ProjectIn) -> None:
     if body.category not in CATEGORIES:
         raise ApiError(422, "validation_error", f"Category must be one of {', '.join(CATEGORIES)}")
     p.category = body.category
-    p.blockchain = clean_text(body.blockchain, "Blockchain", 60)
+    p.blockchain = arc_chain(body.blockchain)
     p.token_address = evm_address(body.token_address, "Token contract address")
     p.supply_info = clean_text(body.supply_info, "Supply information", 2000)
     p.allocation_info = clean_text(body.allocation_info, "Allocation information", 2000)
@@ -84,8 +85,8 @@ def _require_complete(p: Project) -> None:
         missing.append("official website")
     if not p.socials:
         missing.append("at least one social link")
-    if not p.blockchain:
-        missing.append("blockchain")
+    if p.blockchain != "Arc":
+        missing.append("a token on Arc (Avantdex lists only tokens deployed on Arc)")
     if not (p.tge_info or p.tge_date):
         missing.append("TGE information")
     if not p.evidence:

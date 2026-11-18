@@ -67,7 +67,7 @@ function ProjectFormModal({ project, onClose }: { project?: AdminProject; onClos
   const [f, setF] = useState<FormState>(() => ({
     name: project?.name ?? '', token_symbol: project?.token_symbol ?? '', token_name: project?.token_name ?? '', logo_url: '',
     description: project?.description ?? '', website: project?.website ?? '', socials: (project?.socials ?? []).join('\n'),
-    category: project?.category ?? 'Other', blockchain: project?.blockchain ?? 'Arc Testnet', token_address: project?.token_address ?? '',
+    category: project?.category ?? 'Other', blockchain: 'Arc', token_address: project?.token_address ?? '',
     supply_info: project?.supply_info ?? '', allocation_info: project?.allocation_info ?? '', tge_info: project?.tge_info ?? '',
     tge_date: project?.tge_date ? project.tge_date.slice(0, 16) : '', documentation: (project?.documentation ?? []).join('\n'),
     evidence: project?.evidence ?? '', team_wallet: project?.team_wallet ?? '', status: 'Approved',
@@ -119,7 +119,9 @@ function ProjectFormModal({ project, onClose }: { project?: AdminProject; onClos
               </select>
             </Field>
           </div>
-          {input('blockchain', 'Blockchain')}
+          <Field label="Blockchain" htmlFor="pf-blockchain" hint="Arc only: Avantdex lists tokens deployed on Arc.">
+            <div id="pf-blockchain" className="field flex items-center font-semibold">Arc</div>
+          </Field>
           {input('logo_url', 'Logo URL (https, optional)', { hint: project ? 'Leave empty to clear the logo' : undefined })}
           {input('token_address', 'Token contract (optional)')}
           {input('socials', 'Social links, one per line', { area: true, span: true, hint: 'https links' })}

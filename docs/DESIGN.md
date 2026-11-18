@@ -39,6 +39,14 @@ Hero with three live figures, market board (last price, bid, ask, 24h volume, op
 
 The overview opens with one summary band of four wallet figures, then "Needs you" (only when a deadline or claim needs the owner) and the token allocation table (what you receive, deliver and have resting, per token). Details and the rule that resting orders are never shown as guaranteed: [PORTFOLIO.md](PORTFOLIO.md).
 
+## Roadmap, testnet notice, connect dialog and bridge
+
+* **Roadmap** ([ROADMAP.md](ROADMAP.md)): seven connected boxes (4 + 3), date under each box, expandable details; one column with down arrows on narrow screens.
+* **Testnet notice**: banner under the header, a Testnet tag by the logo, a hero chip and a footer line, all driven by the API's chain id.
+* **Connect dialog** ([CIRCLE-WALLET.md](CIRCLE-WALLET.md)): a Circle Wallet card with Sign in with passkey and Create a wallet (or, without a Client Key, a plain statement that it is not set up yet), then "Choose another wallet" for the normal list. Errors from Circle appear inside the card in plain words. `Modal` renders through a portal to `<body>` and is capped at 92% of the screen height with its own scroll.
+* **Bridge page** ([CCTP.md](CCTP.md)): a two-column layout (transfer form, progress and recent transfers) that stacks on phones. It is a lazy chunk.
+* The header now has five links (Home, Explore, Portfolio, Bridge, Create Listing); on phones they stay inside the menu.
+
 ## Responsive
 
 No sideways scrolling from 320 px up. The header is one row on phones (logo, wallet, menu button; the four links open in a menu that closes on navigation, Escape and outside tap). Tables become cards on phones. Tap targets are at least 44 px.

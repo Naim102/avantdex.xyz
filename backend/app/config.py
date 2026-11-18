@@ -40,6 +40,13 @@ class Settings(BaseSettings):
     admin_roles: str = ""
     require_two_person_approval: bool = False
 
+    # Circle Wallet (passkey sign-in with a smart account). Create a Client Key in Circle Console -> Keys -> Client
+    # Keys and register this site's domain as the Passkey Domain. The key is meant for browsers (it is public); the
+    # page receives it from /api/config, so changing it needs no rebuild. Empty means the feature is off.
+    circle_client_key: str = ""
+    circle_client_url: str = "https://modular-sdk.circle.com/v1/rpc/w3s/buidl"
+    circle_paymaster: bool = True  # ask Circle Gas Station to sponsor each transaction (falls back to the wallet's own USDC)
+
     cors_origins: str = ""
 
     # Indexer
