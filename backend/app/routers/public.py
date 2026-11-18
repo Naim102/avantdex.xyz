@@ -47,6 +47,7 @@ def config(db: Session = Depends(get_db)) -> dict:
             "client_key": s.circle_client_key.strip(),
             "paymaster": s.circle_paymaster,
         },
+        "cctp": {"api_url": s.cctp_api_url},
     }
 
 

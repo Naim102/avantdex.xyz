@@ -1,80 +1,99 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowDown, ArrowRight, CalendarDays, Check, ChevronDown, Clock, Flag } from 'lucide-react'
-import { Chip } from '@/components/ui'
 import { Reveal } from '@/components/Reveal'
 import { ROADMAP, type RoadmapStatus, type RoadmapStep } from '@/lib/roadmap'
 
-const STATUS: Record<RoadmapStatus, { label: string; tone: 'ok' | 'neutral'; Icon: typeof Check }> = {
-  completed: { label: 'Completed', tone: 'ok', Icon: Check },
-  upcoming: { label: 'Upcoming', tone: 'neutral', Icon: Clock },
-  vision: { label: 'Long-term vision', tone: 'neutral', Icon: Flag },
+const STATUS: Record<RoadmapStatus, { label: string; Icon: typeof Check }> = {
+  completed: { label: 'Completed', Icon: Check },
+  upcoming: { label: 'Upcoming', Icon: Clock },
+  vision: { label: 'Long-term', Icon: Flag },
 }
 
-/** One box: number, status, the topic, the points behind it. The date sits under the box. */
-function Step({ step, open, index }: { step: RoadmapStep; open: boolean; index: number }) {
+/**
+ * One step. On phones the steps form a slim timeline (a dot and a rail on the left, the card beside it); from the
+ * large breakpoint they are boxes in a grid. The date sits under the box. Details are folded until asked for.
+ */
+function Step({ step, open, onToggle, index }: { step: RoadmapStep; open: boolean; onToggle: () => void; index: number }) {
   const s = STATUS[step.status]
   const done = step.status === 'completed'
+  const last = index === ROADMAP.length - 1
   return (
-    <li className="flex min-w-0 flex-col">
+    <li className="relative flex min-w-0 flex-col pl-9 lg:pl-0">
+      {/* phone timeline: dot and rail */}
+      <span
+        aria-hidden="true"
+        className={`absolute left-0 top-3 grid size-6 place-items-center rounded-full border text-[10px] font-bold lg:hidden ${done ? 'border-[var(--accent)] bg-[var(--accent)] text-[var(--accent-ink)]' : 'border-[var(--line-strong)] bg-[var(--surface)] text-[var(--ink)]'}`}
+      >
+        {done ? <Check className="size-3.5" /> : step.n}
+      </span>
+      {!last && <span aria-hidden="true" className={`absolute bottom-[-0.9rem] left-[11px] top-9 w-px lg:hidden ${done ? 'bg-[var(--accent)]' : 'bg-[var(--line-strong)]'}`} />}
+
       <div className="relative flex flex-1 flex-col">
         <article
-          className={`flex flex-1 flex-col rounded-2xl border bg-[var(--surface)] p-4 shadow-[var(--shadow-sm)] ${done ? 'border-[var(--accent)]' : 'border-[var(--line)]'}`}
+          className={`flex flex-1 flex-col rounded-xl border bg-[var(--surface)] px-3 py-2.5 shadow-[var(--shadow-sm)] lg:p-3 ${done ? 'border-[var(--accent)]' : 'border-[var(--line)]'}`}
           aria-labelledby={`rm-${step.n}`}
         >
-          <div className="flex items-center justify-between gap-2">
-            <span className={`display grid size-10 place-items-center rounded-xl text-lg ${done ? 'bg-[var(--accent)] text-[var(--accent-ink)]' : 'bg-[var(--tint-2)] text-[var(--ink)]'}`}>{step.n}</span>
-            <Chip tone={s.tone}>
-              <s.Icon className="size-3.5" aria-hidden="true" />
+          <div className="flex items-start gap-2.5 lg:flex-wrap lg:gap-y-2">
+            <span className={`display hidden size-8 shrink-0 place-items-center rounded-lg text-sm lg:order-1 lg:grid ${done ? 'bg-[var(--accent)] text-[var(--accent-ink)]' : 'bg-[var(--tint-2)] text-[var(--ink)]'}`} aria-hidden="true">
+              {step.n}
+            </span>
+            <h3 id={`rm-${step.n}`} className="display min-w-0 flex-1 text-balance text-[0.9rem] leading-snug lg:order-3 lg:basis-full lg:text-sm">
+              {step.title}
+            </h3>
+            <span
+              className={`inline-flex shrink-0 items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] font-semibold lg:order-2 lg:ml-auto ${done ? 'border-[var(--accent)] bg-[var(--success-bg)] text-[var(--ink)]' : 'border-[var(--line-strong)] bg-[var(--surface)] text-[var(--muted)]'}`}
+            >
+              <s.Icon className="size-3" aria-hidden="true" />
               {s.label}
-            </Chip>
+            </span>
           </div>
-          <h3 id={`rm-${step.n}`} className="display mt-3 text-balance text-base leading-snug">
-            {step.title}
-          </h3>
-          <details className="group mt-3 border-t border-[var(--hair)] pt-3" open={open}>
-            <summary className="flex cursor-pointer list-none items-center justify-between gap-2 text-sm font-semibold text-[var(--accent-text)] [&::-webkit-details-marker]:hidden">
-              What is included
-              <ChevronDown className="size-4 transition-transform group-open:rotate-180" aria-hidden="true" />
-            </summary>
-            <ul className="mt-3 list-disc space-y-1.5 pl-4 text-sm font-medium text-[var(--muted)] marker:text-[var(--accent-text)]">
-              {step.points.map((p) => (
-                <li key={p} className="text-pretty">
-                  {p}
-                </li>
-              ))}
-            </ul>
-            <p className="mt-3 rounded-xl bg-[var(--tint)] p-3 text-sm font-medium text-pretty">
-              <b className="font-bold">Milestone:</b> {step.milestone}
-            </p>
-          </details>
+          <button
+            type="button"
+            onClick={onToggle}
+            aria-expanded={open}
+            aria-controls={`rm-body-${step.n}`}
+            className="mt-2 flex items-center gap-1 self-start text-xs font-semibold text-[var(--accent-text)]"
+          >
+            {open ? 'Hide details' : 'Details'}
+            <ChevronDown className={`size-3.5 transition-transform ${open ? 'rotate-180' : ''}`} aria-hidden="true" />
+          </button>
+          {open && (
+            <div id={`rm-body-${step.n}`} className="mt-2 border-t border-[var(--hair)] pt-2">
+              <ul className="list-disc space-y-1 pl-4 text-xs font-medium text-[var(--muted)] marker:text-[var(--accent-text)]">
+                {step.points.map((p) => (
+                  <li key={p} className="text-pretty">
+                    {p}
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-2 rounded-lg bg-[var(--tint)] px-2.5 py-2 text-xs font-medium text-pretty">
+                <b className="font-bold">Milestone:</b> {step.milestone}
+              </p>
+            </div>
+          )}
         </article>
         {/* arrow to the next box in the same row (wide screens) */}
         {index % 4 !== 3 && index < 6 && (
-          <span className="pointer-events-none absolute -right-[2.2rem] top-1/2 z-10 hidden h-8 w-8 -translate-y-1/2 place-items-center rounded-full border border-[var(--accent)] bg-[var(--bg)] text-[var(--accent-text)] lg:grid" aria-hidden="true">
-            <ArrowRight className="size-4" />
+          <span className="pointer-events-none absolute -right-[2.1rem] top-1/2 z-10 hidden size-7 -translate-y-1/2 place-items-center rounded-full border border-[var(--accent)] bg-[var(--bg)] text-[var(--accent-text)] lg:grid" aria-hidden="true">
+            <ArrowRight className="size-3.5" />
           </span>
         )}
       </div>
-      <p className="mt-3 flex items-center gap-2 text-sm font-bold">
-        <CalendarDays className={`size-4 shrink-0 ${done ? 'text-[var(--accent-text)]' : 'text-[var(--muted)]'}`} aria-hidden="true" />
+      <p className="mt-1.5 flex items-center gap-1.5 text-xs font-bold lg:mt-2">
+        <CalendarDays className={`size-3.5 shrink-0 ${done ? 'text-[var(--accent-text)]' : 'text-[var(--muted)]'}`} aria-hidden="true" />
         <span>
           {step.dateLabel}: {step.date}
         </span>
       </p>
-      {/* arrow to the next box when the boxes are stacked */}
-      {index < ROADMAP.length - 1 && (
-        <span className="mx-auto mt-3 grid h-8 w-8 place-items-center rounded-full border border-[var(--accent)] text-[var(--accent-text)] lg:hidden" aria-hidden="true">
-          <ArrowDown className="size-4" />
-        </span>
-      )}
     </li>
   )
 }
 
-/** The line that carries the eye from the end of the first row to the start of the second. */
+/** The line that carries the eye from the end of the first row to the start of the second (wide screens). */
 function WrapConnector() {
   return (
-    <li aria-hidden="true" className="relative hidden h-16 lg:col-span-4 lg:block">
+    <li aria-hidden="true" className="relative hidden h-12 lg:col-span-4 lg:block">
       <span className="absolute inset-y-0 left-[calc((100%-7.5rem)/8)] right-[calc((100%-7.5rem)/8)]">
         <span className="absolute right-0 top-0 h-1/2 w-0.5 bg-[var(--accent)]" />
         <span className="absolute left-0 right-0 top-1/2 h-0.5 -translate-y-px bg-[var(--accent)]" />
@@ -87,36 +106,60 @@ function WrapConnector() {
   )
 }
 
-export function RoadmapDiagram({ open = false }: { open?: boolean }) {
+export function RoadmapDiagram({ allOpen = false }: { allOpen?: boolean }) {
+  const [opened, setOpened] = useState<Set<string>>(new Set())
+  const isOpen = (n: string) => allOpen || opened.has(n)
+  const toggle = (n: string) =>
+    setOpened((prev) => {
+      const next = new Set(prev)
+      if (next.has(n)) next.delete(n)
+      else next.add(n)
+      return next
+    })
   return (
-    <ol className="grid list-none grid-cols-1 gap-x-10 gap-y-0 p-0 lg:grid-cols-4 lg:gap-y-0" aria-label="Avantdex roadmap">
+    <ol className="grid list-none grid-cols-1 gap-x-10 gap-y-3.5 p-0 lg:grid-cols-4 lg:gap-y-0" aria-label="Avantdex roadmap">
       {ROADMAP.map((step, i) => (
-        <RoadmapItem key={step.n} step={step} index={i} open={open} />
+        <RoadmapItem key={step.n} step={step} index={i} open={isOpen(step.n)} onToggle={() => toggle(step.n)} />
       ))}
     </ol>
   )
 }
 
-function RoadmapItem({ step, index, open }: { step: RoadmapStep; index: number; open: boolean }) {
+function RoadmapItem({ step, index, open, onToggle }: { step: RoadmapStep; index: number; open: boolean; onToggle: () => void }) {
   return (
     <>
-      <Step step={step} open={open} index={index} />
+      <Step step={step} open={open} onToggle={onToggle} index={index} />
       {index === 3 && <WrapConnector />}
     </>
+  )
+}
+
+/** Roadmap page: the same diagram with an "Expand all" switch. */
+export function RoadmapWithControls() {
+  const [all, setAll] = useState(false)
+  return (
+    <div className="space-y-3">
+      <div className="flex justify-end">
+        <button type="button" className="btn btn-ghost !min-h-9 !px-3 text-xs" aria-pressed={all} onClick={() => setAll((v) => !v)}>
+          {all ? 'Collapse all' : 'Expand all'}
+        </button>
+      </div>
+      <RoadmapDiagram allOpen={all} key={String(all)} />
+    </div>
   )
 }
 
 /** Home page block, placed above the footer. */
 export function RoadmapSection() {
   return (
-    <section className="space-y-6" aria-labelledby="roadmap-h">
+    <section className="space-y-4" aria-labelledby="roadmap-h">
       <Reveal>
-        <div className="flex flex-wrap items-end justify-between gap-4">
+        <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-1">
           <div>
-            <h2 id="roadmap-h" className="display text-3xl">Roadmap</h2>
-            <p className="mt-1 max-w-2xl text-sm font-medium text-[var(--muted)]">From foundation to ecosystem expansion. Two steps are done on testnet; the independent audit comes before anything runs on mainnet.</p>
+            <h2 id="roadmap-h" className="display text-2xl sm:text-3xl">Roadmap</h2>
+            <p className="mt-1 text-sm font-medium text-[var(--muted)]">Two steps done on testnet. The independent audit comes before mainnet.</p>
           </div>
-          <Link to="/roadmap" className="link-line text-sm font-semibold">Open the full roadmap</Link>
+          <Link to="/roadmap" className="link-line text-sm font-semibold">Full roadmap</Link>
         </div>
       </Reveal>
       <Reveal>

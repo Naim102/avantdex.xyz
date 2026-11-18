@@ -484,13 +484,17 @@ await test('roadmap: seven boxes with their dates on the home page and the roadm
     for (const d of ['Completed: November 15, 2026', 'Completed: November 17, 2026', 'Target: February 28, 2027', 'Target: March 31, 2027', 'Target: April 15, 2027', 'Target: April 30, 2027', 'Target: September 30, 2027 and ongoing']) if (!r.text.includes(d)) throw new Error(p + ' missing date ' + d)
     if (r.done !== 2) throw new Error(p + ' completed boxes ' + r.done)
   }
-  const open = await visitor.evaluate(() => [...document.querySelectorAll('ol[aria-label="Avantdex roadmap"] details')].every((d) => d.open))
-  if (!open) throw new Error('the roadmap page should show every box expanded')
+  // details are folded until asked for; the roadmap page can expand them all
+  if (await visitor.evaluate(() => document.querySelector('ol[aria-label="Avantdex roadmap"]').innerText.includes('Milestone:'))) throw new Error('details must start folded')
+  await visitor.evaluate(() => [...document.querySelectorAll('button')].find((b) => /^Expand all$/.test(b.textContent.trim())).click())
+  await sleep(300)
+  const milestones = await visitor.evaluate(() => (document.querySelector('ol[aria-label="Avantdex roadmap"]').innerText.match(/Milestone:/g) ?? []).length)
+  if (milestones !== 7) throw new Error('expand all shows ' + milestones + ' milestones')
   await visitor.goto(BASE + '/', { waitUntil: 'networkidle2' })
   await visitor.evaluate(() => [...document.querySelectorAll('footer a')].find((a) => a.textContent === 'Roadmap').click())
   await waitFor(() => visitor.evaluate(() => location.pathname === '/roadmap'), 'footer link', 5000)
 })
-await test('bridge: validates the amount, quotes Circle fees for Arc to another chain, and keeps the wallet on the page', async () => {
+await test('bridge: lists the networks, validates the amount, offers both ways to finish, quotes Circle fees, keeps the wallet on the page', async () => {
   const USDC = '0x3600000000000000000000000000000000000000'
   const slot = keccak256(encodeAbiParameters([{ type: 'address' }, { type: 'uint256' }], [ADMIN, 0n])) // OpenZeppelin _balances at slot 0
   await rpc('anvil_setStorageAt', [USDC, slot, pad(toHex(1_000_000n * 10n ** 6n), { size: 32 })])
@@ -498,17 +502,44 @@ await test('bridge: validates the amount, quotes Circle fees for Arc to another 
   await signIn(b)
   await b.goto(BASE + '/bridge', { waitUntil: 'networkidle2' })
   await waitFor(() => b.evaluate(() => !!document.getElementById('bridge-amount')), 'bridge page', 60000)
+  // the network list: main networks first, then the rest of Circle's testnets; none that Circle's docs do not list
+  const nets = await b.evaluate(() => [...document.querySelectorAll('#bridge-from optgroup')].map((g) => ({ label: g.label, options: [...g.querySelectorAll('option')].map((o) => o.textContent) })))
+  const main = nets.find((n) => n.label === 'Main networks')?.options ?? []
+  const more = nets.find((n) => n.label === 'More networks')?.options ?? []
+  for (const want of ['Ethereum Sepolia', 'Base Sepolia', 'Arbitrum Sepolia', 'Optimism Sepolia', 'Avalanche Fuji', 'Polygon Amoy']) if (!main.includes(want)) throw new Error('main networks miss ' + want + ': ' + main.join(', '))
+  if (more.length < 12) throw new Error('only ' + more.length + ' more networks')
+  if ([...main, ...more].some((n) => /HyperEVM|BNB|Binance|Robinhood/i.test(n))) throw new Error('a network without Circle USDC support is offered')
   await b.click('button[aria-label="Swap direction"]')
   await typeInto(b, '#bridge-amount', '0.5')
   await waitFor(() => b.evaluate(() => /minimum is 1 USDC/.test(document.body.innerText)), 'minimum message', 8000)
   await typeInto(b, '#bridge-amount', 'abc')
   await waitFor(() => b.evaluate(() => /at most 6 decimals/.test(document.body.innerText)), 'format message', 8000)
   await typeInto(b, '#bridge-amount', '20')
+  // default: the user finishes the transfer (Standard, no Circle fee)
+  await waitFor(() => b.evaluate(() => /Circle fee\s*none \(Standard\)/.test(document.querySelector('dl[aria-label=Summary]')?.innerText.replace(/\s+/g, ' ') ?? '')), 'direct mode summary', 20000)
+  const direct = await b.evaluate(() => ({ summary: document.querySelector('dl[aria-label=Summary]').innerText.replace(/\s+/g, ' '), button: [...document.querySelectorAll('main button')].find((x) => /^Withdraw 20 USDC from Arc$/.test(x.textContent.trim()))?.disabled, escrow: false }))
+  if (!/Wait for Circle under a second/.test(direct.summary)) throw new Error('wait time missing: ' + direct.summary)
+  if (!/You receive on Ethereum Sepolia 20\.00 USDC/.test(direct.summary)) throw new Error('summary: ' + direct.summary)
+  if (direct.button !== false) throw new Error('withdraw button state ' + direct.button)
+  // a destination Circle cannot finish for: the Circle option is greyed out and says so
+  await b.select('#bridge-to', 'Injective_Testnet')
+  await waitFor(() => b.evaluate(() => /Circle cannot finish transfers that end on Injective Testnet/.test(document.body.innerText)), 'circle option unavailable', 8000)
+  if (!(await b.evaluate(() => [...document.querySelectorAll('input[name=mode]')].find((i) => i.parentElement.innerText.includes('Circle finishes it')).disabled))) throw new Error('the Circle option must be disabled for Injective')
+  // Circle finishes it: a live fee quote from Circle
+  await b.select('#bridge-to', 'Ethereum_Sepolia')
+  await b.evaluate(() => [...document.querySelectorAll('label')].find((l) => l.innerText.includes('Circle finishes it')).click())
   await waitFor(() => b.evaluate(() => /Circle fees\s*about [0-9.]+ USDC/.test(document.querySelector('dl[aria-label=Summary]')?.innerText.replace(/\s+/g, ' ') ?? '')), 'fee quote from Circle', 60000)
   const s = await b.evaluate(() => ({ summary: document.querySelector('dl[aria-label=Summary]').innerText.replace(/\s+/g, ' '), button: [...document.querySelectorAll('main button')].find((x) => /^Withdraw 20 USDC from Arc$/.test(x.textContent.trim()))?.disabled, wrongNetwork: /wrong network/.test(document.body.innerText) }))
   if (!/You receive on Ethereum Sepolia about [0-9.]+ USDC/.test(s.summary)) throw new Error('summary: ' + s.summary)
   if (s.button !== false) throw new Error('withdraw button state ' + s.button)
   if (s.wrongNetwork) throw new Error('the wrong-network banner must not show on the bridge page')
+  // deposits show how the money reaches the escrow
+  await b.click('button[aria-label="Swap direction"]')
+  await waitFor(() => b.evaluate(() => /How it reaches the escrow/.test(document.body.innerText)), 'escrow explanation', 8000)
+  // adding from a slow-finality network says how long Circle takes
+  await b.evaluate(() => [...document.querySelectorAll('label')].find((l) => l.innerText.includes('I finish it myself')).click())
+  await b.select('#bridge-from', 'Base_Sepolia')
+  await waitFor(() => b.evaluate(() => /Wait for Circle about 15 to 19 minutes/.test(document.querySelector('dl[aria-label=Summary]')?.innerText.replace(/\s+/g, ' ') ?? '')), 'wait time from Base Sepolia', 8000)
   if (b.errors.length) throw new Error('page errors: ' + b.errors[0])
 })
 await test('mobile: single-row header, menu opens, navigates and closes', async () => {

@@ -76,6 +76,8 @@ export interface AppConfig {
   network: string
   audited: boolean
   circle_wallet: { enabled: boolean; client_url: string; client_key: string; paymaster: boolean }
+  /** Circle's Iris attestation service used by the bridge (the sandbox on testnet). */
+  cctp?: { api_url: string }
 }
 
 export interface Badge {

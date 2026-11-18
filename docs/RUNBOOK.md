@@ -119,7 +119,9 @@ Frontend units and the whole UI (no browser needed for the first):
 
 ```bash
 node scripts/test-circle-provider.mjs        # Circle Wallet provider logic with fake accounts
-node scripts/verify-cctp.mjs                 # read-only check of the CCTP contracts on public testnets
+node scripts/test-cctp.mjs                   # CCTP library: messages, polling, attestation check, network list
+node scripts/verify-cctp.mjs                 # read-only check of the CCTP data against Circle's tables and the chain
+node scripts/test-bridge-fork.mjs            # the whole direct transfer against the real CCTP contracts on Docker forks (needs Docker and internet)
 docker compose -f docker-compose.dev.yml up -d --build   # chain + db + api + indexer, then seed (scripts/seed_demo_markets.py)
 node scripts/ui-feature-test.mjs <DEMO_TOKEN_ADDRESS>    # headless Chrome, see the file header
 ```

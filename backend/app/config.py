@@ -47,6 +47,10 @@ class Settings(BaseSettings):
     circle_client_url: str = "https://modular-sdk.circle.com/v1/rpc/w3s/buidl"
     circle_paymaster: bool = True  # ask Circle Gas Station to sponsor each transaction (falls back to the wallet's own USDC)
 
+    # Circle CCTP bridge: the Iris attestation API the browser polls (public, no key). Sandbox for testnets;
+    # mainnet uses https://iris-api.circle.com together with the mainnet contract tables in the frontend.
+    cctp_api_url: str = "https://iris-api-sandbox.circle.com"
+
     cors_origins: str = ""
 
     # Indexer
@@ -66,6 +70,14 @@ class Settings(BaseSettings):
     keeper_max_tx_per_run: int = 10
     keeper_interval_seconds: float = 30.0
     keeper_min_balance: float = 0.5  # USDC; below this the keeper pauses and the dashboard warns
+
+    @field_validator("cctp_api_url")
+    @classmethod
+    def _cctp_https(cls, v: str) -> str:
+        v = v.strip().rstrip("/")
+        if not v.startswith("https://"):
+            raise ValueError("CCTP_API_URL must be an https:// URL")
+        return v
 
     @field_validator("database_url")
     @classmethod

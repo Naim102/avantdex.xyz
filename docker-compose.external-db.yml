@@ -40,6 +40,7 @@ services:
       CIRCLE_CLIENT_KEY: ${CIRCLE_CLIENT_KEY:-}
       CIRCLE_CLIENT_URL: ${CIRCLE_CLIENT_URL:-https://modular-sdk.circle.com/v1/rpc/w3s/buidl}
       CIRCLE_PAYMASTER: ${CIRCLE_PAYMASTER:-true}
+      CCTP_API_URL: ${CCTP_API_URL:-https://iris-api-sandbox.circle.com}
     expose:
       - "8000"
     healthcheck:

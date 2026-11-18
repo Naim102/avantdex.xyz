@@ -5,12 +5,14 @@ Run on 2026-11-10 and again on 2026-11-18 against the local dev stack (anvil wit
 | Suite | Result |
 |---|---|
 | Contracts v2 (`forge test`, unit, fuzz and invariants) | 112 passed |
-| Backend (`pytest`, includes chain integration, the keeper, the v2 contract, the portfolio positions endpoint, smart-wallet sign-in, the Circle config and the Arc-only rule) | 86 passed |
-| UI feature test (`scripts/ui-feature-test.mjs`, headless Chrome), final run on a fresh stack, includes the attention list, token pre-flight, draft edit/discard, pause, the portfolio token allocation, and (2026-11-18) the testnet notice, the Circle Wallet connect dialog, the roadmap and the bridge | 32 steps, all passed (the full run on a fresh stack had 31 first time; the phone-width overflow step hit a 30 s navigation timeout under load and passed on rerun with a 90 s timeout) |
+| Backend (`pytest`, includes chain integration, the keeper, the v2 contract, the portfolio positions endpoint, smart-wallet sign-in, the Circle config, the CCTP API URL and the Arc-only rule) | 87 passed |
+| UI feature test (`scripts/ui-feature-test.mjs`, headless Chrome), final run on a fresh stack, includes the attention list, token pre-flight, draft edit/discard, pause, the portfolio token allocation, and (2026-11-18) the testnet notice, the Circle Wallet connect dialog, the roadmap and the bridge | 32 steps, all passed (full run on a fresh stack: 31 first time; the bridge step then failed on a wrong expectation in the test itself, was corrected, and passed on rerun together with the roadmap and phone steps) |
 | Circle provider unit test (`node scripts/test-circle-provider.mjs`, fake smart account and bundler) | 12 passed |
 | Smart-wallet sign-in (`backend/tests/test_smart_wallet.py`, real ERC-1271 and ERC-6492 accounts on a local chain), Circle config, Arc-only listing rule | 7 + 1 + 1 passed |
 | nginx visitor address (spoofed `X-Forwarded-For` through the real `nginx.conf`) | real address passed on |
-| CCTP contract check (`node scripts/verify-cctp.mjs`, read-only, public RPC) | OK on Arc Testnet, Ethereum Sepolia, Base Sepolia |
+| CCTP library unit test (`node scripts/test-cctp.mjs`: messages, Iris polling, attestation check, network list) | 9 passed |
+| **Direct CCTP transfer against the real contracts** (`node scripts/test-bridge-fork.mjs`: Base Sepolia fork to Ethereum Sepolia fork, approve, burn, polling, attestation check, mint, resume, refusals) | 11 passed |
+| CCTP data check (`node scripts/verify-cctp.mjs`, read-only: contracts, every USDC and contract address against Circle's tables, attester keys on chain) | all OK (HyperEVM Testnet excluded because Circle's tables do not list it) |
 | Contract v2 on Arc Testnet (`0xb489…0283`): roles, fee constants, runtime code vs local build, and the production compose stack indexing it with lag 0 | verified |
 | Typecheck (`tsc`) and lint (`oxlint --type-aware`) | clean |
 

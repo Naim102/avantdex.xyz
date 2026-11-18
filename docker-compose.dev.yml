@@ -52,6 +52,7 @@ services:
       # anvil account 0 owns the contract roles; it becomes super_admin of the dashboard
       BOOTSTRAP_ADMIN_ADDRESSES: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
       CIRCLE_CLIENT_KEY: ${CIRCLE_CLIENT_KEY:-}
+      CCTP_API_URL: ${CCTP_API_URL:-https://iris-api-sandbox.circle.com}
     volumes:
       - shared:/shared:ro
     command: ["sh", "-c", ". /shared/addresses.env && alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"]

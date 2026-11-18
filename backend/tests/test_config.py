@@ -15,6 +15,8 @@ def test_blank_environment_variables_use_the_defaults(monkeypatch):
 def test_config_exposes_circle_wallet_only_when_a_client_key_is_set(client, monkeypatch):
     from app.config import get_settings
 
+    cctp = client.get("/api/config").json()["cctp"]
+    assert cctp == {"api_url": "https://iris-api-sandbox.circle.com"}
     off = client.get("/api/config").json()["circle_wallet"]
     assert off["enabled"] is False and off["client_key"] == ""
     monkeypatch.setenv("CIRCLE_CLIENT_KEY", "  TEST_API_KEY:abc:def  ")
@@ -27,3 +29,16 @@ def test_config_exposes_circle_wallet_only_when_a_client_key_is_set(client, monk
     finally:
         monkeypatch.undo()
         get_settings.cache_clear()
+
+
+def test_cctp_api_url_must_be_https_and_loses_a_trailing_slash(monkeypatch):
+    import pytest
+    from pydantic import ValidationError
+
+    monkeypatch.setenv("CCTP_API_URL", " https://iris-api.circle.com/ ")
+    assert Settings().cctp_api_url == "https://iris-api.circle.com"
+    monkeypatch.setenv("CCTP_API_URL", "http://iris.example")
+    with pytest.raises(ValidationError):
+        Settings()
+    monkeypatch.setenv("CCTP_API_URL", "")  # blank (Coolify) means the sandbox default
+    assert Settings().cctp_api_url == "https://iris-api-sandbox.circle.com"
